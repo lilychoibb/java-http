@@ -2,24 +2,24 @@ package org.apache.coyote.handler.dynamichandler;
 
 import nextstep.jwp.db.InMemoryUserRepository;
 import nextstep.jwp.model.User;
-import org.apache.coyote.handler.Handler;
 import org.apache.coyote.handler.statichandler.ExceptionHandler;
-import org.apache.coyote.http11.*;
-import org.apache.coyote.http11.request.HttpRequest;
+import org.apache.coyote.http11.ContentType;
+import org.apache.coyote.http11.HttpHeader;
 import org.apache.coyote.http11.Query;
+import org.apache.coyote.http11.Session;
+import org.apache.coyote.http11.request.HttpRequest;
 import org.apache.coyote.http11.response.HttpResponse;
 import org.apache.coyote.http11.response.HttpStatus;
-import org.apache.coyote.http11.response.StatusLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.nio.file.Files;
 import java.util.Optional;
 import java.util.UUID;
 
-public class LoginHandler implements Handler {
+public class LoginHandler extends AbstractHandler {
 
     private static final String DEFAULT_DIRECTORY_PATH = "static";
     private static final Logger log = LoggerFactory.getLogger(LoginHandler.class);
@@ -27,17 +27,7 @@ public class LoginHandler implements Handler {
     private static final String PASSWORD = "password";
 
     @Override
-    public HttpResponse handle(HttpRequest httpRequest) {
-        if (HttpMethod.GET == httpRequest.httpMethod()) {
-            return handleGetMapping(httpRequest);
-        }
-        if (HttpMethod.POST == httpRequest.httpMethod()) {
-            return handlePostMapping(httpRequest);
-        }
-        return new ExceptionHandler(HttpStatus.INTERNAL_SERVER_ERROR).handle(httpRequest);
-    }
-
-    private HttpResponse handleGetMapping(HttpRequest httpRequest) {
+    public void doGet(HttpRequest httpRequest, HttpResponse httpResponse) {
         try {
             /*
                     httpRequest.session() returns null when Request does not contain Session Information.
@@ -47,75 +37,86 @@ public class LoginHandler implements Handler {
              */
             Session session = httpRequest.session();
             if (session == null) {
-                return HttpResponse.createStaticResponseByPath(
-                        httpRequest.httpVersion(),
-                        HttpStatus.OK,
-                        DEFAULT_DIRECTORY_PATH + httpRequest.path() + ContentType.TEXT_HTML.extension());
+                handleNotLogin(httpRequest, httpResponse);
+                return;
             }
-            return handleAlreadyLogin(httpRequest);
-        } catch (IOException e) {
-            return new ExceptionHandler(HttpStatus.NOT_FOUND).handle(httpRequest);
+            handleAlreadyLogin(httpRequest, httpResponse, session);
         } catch (IllegalArgumentException e) {
-            StatusLine statusLine = new StatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
-
-            Map<String, String> headers = new LinkedHashMap<>();
-            headers.put(HttpHeader.LOCATION.value(), "/login.html");
-            headers.put(HttpHeader.SET_COOKIE.value(), Session.JSESSIONID + "=; " + "Max-Age=0 ");
-
-            return new HttpResponse(statusLine, new Header(headers));
+            handleNotLogin(httpRequest, httpResponse);
         }
     }
 
-    private HttpResponse handleAlreadyLogin(HttpRequest httpRequest) {
-        Session session = httpRequest.session();
+    private void handleNotLogin(HttpRequest httpRequest, HttpResponse httpResponse) {
+        try {
+            String path = DEFAULT_DIRECTORY_PATH + httpRequest.path() + ContentType.TEXT_HTML.extension();
+            String body = findStaticPage(path);
+
+            httpResponse.setStatusLine(httpRequest.httpVersion(), HttpStatus.OK);
+            httpResponse.setHeader(HttpHeader.CONTENT_TYPE.value(), ContentType.TEXT_HTML.value());
+            httpResponse.setHeader(HttpHeader.CONTENT_LENGTH.value(), String.valueOf(body.getBytes().length));
+            httpResponse.setBody(body);
+        } catch (IOException e) {
+            new ExceptionHandler(HttpStatus.NOT_FOUND).service(httpRequest, httpResponse);
+        }
+    }
+
+    private String findStaticPage(String path) throws IOException {
+        File file = new File(HttpResponse.class
+                .getClassLoader()
+                .getResource(path)
+                .getFile());
+        return new String(Files.readAllBytes(file.toPath()));
+    }
+
+    private void handleAlreadyLogin(HttpRequest httpRequest, HttpResponse httpResponse, Session session) {
         User user = (User) session.getAttribute("user");
-
-        StatusLine statusLine = new StatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
-
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put(HttpHeader.LOCATION.value(), "/index.html");
         if (user == null) {
             session.invalidate();
-            headers.put(HttpHeader.SET_COOKIE.value(), Session.JSESSIONID + "=; " + "Max-Age=0 ");
+            httpResponse.setHeader(HttpHeader.SET_COOKIE.value(), Session.JSESSIONID + "=; " + "Max-Age=0 ");
         }
-        return new HttpResponse(statusLine, new Header(headers));
+
+        httpResponse.setStatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
+        httpResponse.setHeader(HttpHeader.LOCATION.value(), "/index.html");
     }
 
-    private HttpResponse handlePostMapping(HttpRequest httpRequest) {
+    @Override
+    public void doPost(HttpRequest httpRequest, HttpResponse httpResponse) {
         Query queries = Query.create(httpRequest.body());
 
         String account = queries.get(ACCOUNT);
         String password = queries.get(PASSWORD);
-        if (account == null || password == null) {
-            StatusLine statusLine = new StatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
-
-            Map<String, String> headers = new LinkedHashMap<>();
-            headers.put(HttpHeader.LOCATION.value(), "/login.html");
-
-            return new HttpResponse(statusLine, new Header(headers));
+        if (isInvalidLoginFormat(account, password)) {
+            httpResponse.setStatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
+            httpResponse.setHeader(HttpHeader.LOCATION.value(), "/login.html");
+            return;
         }
         Optional<User> user = InMemoryUserRepository.findByAccount(account);
-        if (user.isPresent() && user.get().checkPassword(password)) {
+        if (isCorrectUser(password, user)) {
             log.info(ACCOUNT + ": " + account + ", " + PASSWORD + ": " + password);
-            return handleRedirectPage(httpRequest, user.get());
+            handleLoginSuccess(httpRequest, httpResponse, user.get());
+            return;
         }
-        return handleUnauthorizedPage(httpRequest);
+        handleLoginFail(httpRequest, httpResponse);
     }
 
-    private HttpResponse handleUnauthorizedPage(HttpRequest httpRequest) {
-        return new ExceptionHandler(HttpStatus.UNAUTHORIZED).handle(httpRequest);
+    private boolean isInvalidLoginFormat(String account, String password) {
+        return account == null || password == null;
     }
 
-    private HttpResponse handleRedirectPage(HttpRequest httpRequest, User user) {
-        StatusLine statusLine = new StatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
+    private boolean isCorrectUser(String password, Optional<User> user) {
+        return user.isPresent() && user.get().checkPassword(password);
+    }
 
+    private void handleLoginSuccess(HttpRequest httpRequest, HttpResponse httpResponse, User user) {
         Session session = Session.create(UUID.randomUUID().toString());
         session.setAttribute("user", user);
 
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put(HttpHeader.LOCATION.value(), "/index.html");
-        headers.put(HttpHeader.SET_COOKIE.value(), Session.JSESSIONID + "=" + session.getId());
+        httpResponse.setStatusLine(httpRequest.httpVersion(), HttpStatus.FOUND);
+        httpResponse.setHeader(HttpHeader.LOCATION.value(), "/index.html");
+        httpResponse.setHeader(HttpHeader.SET_COOKIE.value(), Session.JSESSIONID + "=" + session.getId());
+    }
 
-        return new HttpResponse(statusLine, new Header(headers));
+    private void handleLoginFail(HttpRequest httpRequest, HttpResponse httpResponse) {
+        new ExceptionHandler(HttpStatus.UNAUTHORIZED).service(httpRequest, httpResponse);
     }
 }
