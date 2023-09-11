@@ -1,11 +1,12 @@
 package org.apache.coyote.session;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Objects.isNull;
 
 public class SessionManager {
 
-    private static final Map<String, Session> SESSIONS = new HashMap<>();
+    private static final ConcurrentHashMap<String, Session> SESSIONS = new ConcurrentHashMap<>();
 
     private SessionManager() {
     }
@@ -15,6 +16,10 @@ public class SessionManager {
     }
 
     public static Session findSession(final String id) {
+        if (isNull(id)) {
+            return null;
+        }
+
         return SESSIONS.getOrDefault(id, null);
     }
 

@@ -1,40 +1,52 @@
 package org.apache.coyote.request;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static java.util.Objects.*;
 
 public class QueryParams {
 
     private static final String QUERY_PARAM_START_CONDITION = "?";
     private static final String QUERY_PARAMS_DELIMITER = "&";
     private static final String QUERY_PARAM_VALUE_DELIMITER = "=";
+
     private static final int PARAM_NAME_INDEX = 0;
     private static final int PARAM_VALUE_INDEX = 1;
 
-    private final Map<String, String> params = new HashMap<>();
+    private final Map<String, String> params;
 
     private QueryParams(final Map<String, String> params) {
-        this.params.putAll(params);
+        this.params = params;
     }
 
     public static QueryParams empty() {
         return new QueryParams(new HashMap<>());
     }
 
-    public static QueryParams from(final String queryParamsWithValue) {
-        final Map<String, String> mapping = new HashMap<>();
-
-        final int paramStartIndex = queryParamsWithValue.indexOf(QUERY_PARAM_START_CONDITION) + 1;
-        final String[] queryParams = queryParamsWithValue.substring(paramStartIndex).split(QUERY_PARAMS_DELIMITER);
-        for (String queryParam : queryParams) {
-            final String[] paramWithValue = queryParam.split(QUERY_PARAM_VALUE_DELIMITER);
-            mapping.put(paramWithValue[PARAM_NAME_INDEX], paramWithValue[PARAM_VALUE_INDEX]);
+    public static QueryParams from(final String queryParamNamesAndValues) {
+        if (isNull(queryParamNamesAndValues) || queryParamNamesAndValues.isBlank()) {
+            return empty();
         }
 
-        return new QueryParams(mapping);
+        final int paramStartIndex = queryParamNamesAndValues.indexOf(QUERY_PARAM_START_CONDITION) + 1;
+        return new QueryParams(collectQueryParamMapping(queryParamNamesAndValues, paramStartIndex));
+    }
+
+    private static Map<String, String> collectQueryParamMapping(final String queryParamNamesAndValues, final int paramStartIndex) {
+        return Arrays.stream(queryParamNamesAndValues
+                        .substring(paramStartIndex)
+                        .split(QUERY_PARAMS_DELIMITER))
+                .map(queryParam -> queryParam.split(QUERY_PARAM_VALUE_DELIMITER))
+                .collect(Collectors.toMap(
+                        entry -> entry[PARAM_NAME_INDEX],
+                        entry -> entry[PARAM_VALUE_INDEX])
+                );
     }
 
     public boolean isEmpty() {
@@ -59,7 +71,7 @@ public class QueryParams {
 
     @Override
     public int hashCode() {
-        return Objects.hash(params);
+        return hash(params);
     }
 
     @Override

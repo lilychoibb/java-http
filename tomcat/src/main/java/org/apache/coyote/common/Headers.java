@@ -1,7 +1,5 @@
 package org.apache.coyote.common;
 
-import org.apache.coyote.session.Cookies;
-
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -9,58 +7,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.coyote.common.HeaderType.CONTENT_LENGTH;
-import static org.apache.coyote.common.HeaderType.CONTENT_TYPE;
-import static org.apache.coyote.common.HeaderType.LOCATION;
-import static org.apache.coyote.common.HeaderType.SET_COOKIE;
-
 public class Headers {
 
-    private final Map<String, String> mapping = new HashMap<>();
+    private final Map<String, String> mapping;
 
-    public Headers() {
+    private Headers(final Map<String, String> mapping) {
+        this.mapping = mapping;
     }
 
-    public Headers(final Map<String, String> headers) {
-        mapping.putAll(headers);
+    public static Headers empty() {
+        return new Headers(new HashMap<>());
     }
 
-    public String getHeaderValue(final String name) {
-        return mapping.getOrDefault(name, null);
+    public void addHeader(final String headerName, final String headerValue) {
+        mapping.put(headerName, headerValue);
     }
 
-    public void addHeader(final String headerName, final String value) {
-        mapping.put(headerName, value);
-    }
-
-    public void setContentType(final String contentType) {
-        mapping.put(CONTENT_TYPE.source(), contentType);
-    }
-
-    public void setContentLength(final int contentLength) {
-        mapping.put(CONTENT_LENGTH.source(), String.valueOf(contentLength));
-    }
-
-    public void setLocation(final String location) {
-        mapping.put(LOCATION.source(), location);
-    }
-
-    public void setCookies(final Cookies cookies) {
-        final String cookieValues = cookies.cookieNames()
-                .stream()
-                .map(cookieName -> cookieName + "=" + cookies.getCookieValue(cookieName))
-                .collect(Collectors.joining(";"));
-
-        mapping.put(SET_COOKIE.source(), cookieValues);
-    }
-
-    public void addCookie(final String cookieName, final String cookieValue) {
-        final String oldSetCookies = mapping.getOrDefault(SET_COOKIE.source(), null);
-        if (Objects.isNull(oldSetCookies)) {
-            mapping.put(SET_COOKIE.source(), cookieName + "=" + cookieValue);
-        }
-
-        mapping.put(SET_COOKIE.source(), oldSetCookies + ";" + cookieName + "=" + cookieValue);
+    public String getHeaderValue(final String headerName) {
+        return mapping.getOrDefault(headerName, null);
     }
 
     public List<String> headerNames() {
@@ -68,6 +32,19 @@ public class Headers {
                 .stream()
                 .sorted(Comparator.naturalOrder())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final Headers headers = (Headers) o;
+        return Objects.equals(mapping, headers.mapping);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(mapping);
     }
 
     @Override
