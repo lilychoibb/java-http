@@ -49,6 +49,10 @@ public class HttpCookie {
         cookies.put(key, value);
     }
 
+    public void putAll(HttpCookie httpCookie) {
+        this.cookies.putAll(httpCookie.cookies);
+    }
+
     public String find(String key) {
         return cookies.get(key);
     }
@@ -65,6 +69,5 @@ public class HttpCookie {
     private String formatCookies(Map.Entry<String, String> entry) {
         return String.format("Set-Cookie: %s=%s ", entry.getKey(), entry.getValue());
     }
-
 
 }
