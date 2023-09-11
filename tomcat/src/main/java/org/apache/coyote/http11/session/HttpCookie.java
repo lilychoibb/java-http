@@ -5,6 +5,7 @@ import lombok.Getter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toMap;
@@ -18,7 +19,7 @@ public class HttpCookie {
     private final Map<String, String> cookies = new HashMap<>();
 
     public HttpCookie(Map<String, String> cookies) {
-        cookies.putAll(cookies);
+        this.cookies.putAll(cookies);
     }
 
     private HttpCookie() {
@@ -44,11 +45,11 @@ public class HttpCookie {
         cookies.put(key, value);
     }
 
-    public String find(String key) {
-        return cookies.get(key);
+    public Optional<String> find(String key) {
+        return Optional.ofNullable(cookies.get(key));
     }
 
-    public String findJSessionId() {
-        return cookies.get("JSESSIONID");
+    public Optional<String> findJSessionId() {
+        return find("JSESSIONID");
     }
 }

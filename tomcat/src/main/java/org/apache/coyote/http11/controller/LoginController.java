@@ -4,6 +4,7 @@ import nextstep.jwp.db.InMemoryUserRepository;
 import nextstep.jwp.model.User;
 import org.apache.coyote.http11.request.*;
 import org.apache.coyote.http11.response.ContentType;
+import org.apache.coyote.http11.response.HttpResponse;
 import org.apache.coyote.http11.response.HttpStatus;
 import org.apache.coyote.http11.response.ResponseEntity;
 import org.apache.coyote.http11.session.HttpCookie;
@@ -13,6 +14,7 @@ import org.apache.coyote.http11.session.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -26,24 +28,29 @@ public class LoginController implements Controller {
     private final SessionManager sessionManager = new SessionManager();
 
     @Override
-    public ResponseEntity service(HttpRequest request) {
+    public void service(HttpRequest request, HttpResponse response) throws IOException {
+        response.modifyResponse(generateResponseEntity(request));
+    }
+
+    private ResponseEntity generateResponseEntity(HttpRequest request) {
         HttpRequestStartLine httpRequestStartLine = request.getHttpRequestStartLine();
         HttpRequestHeader httpRequestHeader = request.getHttpRequestHeader();
         HttpRequestBody httpRequestBody = request.getHttpRequestBody();
 
         HttpMethod httpMethod = httpRequestStartLine.getHttpMethod();
 
-        String account = httpRequestBody.find("account");
-
-        if (httpMethod == HttpMethod.GET && account == null) {
+        if (httpMethod == HttpMethod.GET) {
             HttpCookie httpCookie = httpRequestHeader.getCookie();
-            Session session = sessionManager.findSession(httpCookie.findJSessionId());
-            if (session != null) {
-                return ResponseEntity.builder()
-                        .httpStatus(HttpStatus.FOUND)
-                        .contentType(ContentType.HTML)
-                        .location(INDEX_PAGE_URI)
-                        .build();
+            Optional<String> jSessionId = httpCookie.findJSessionId();
+            if (jSessionId.isPresent()) {
+                Optional<Session> session = sessionManager.findSession(jSessionId.get());
+                if (session.isPresent()) {
+                    return ResponseEntity.builder()
+                            .httpStatus(HttpStatus.FOUND)
+                            .contentType(ContentType.HTML)
+                            .location(INDEX_PAGE_URI)
+                            .build();
+                }
             }
 
             return ResponseEntity.builder()
@@ -53,6 +60,7 @@ public class LoginController implements Controller {
                     .build();
         }
 
+        String account = httpRequestBody.find("account");
         String password = httpRequestBody.find("password");
 
         User findAccount = findAccount(account);
