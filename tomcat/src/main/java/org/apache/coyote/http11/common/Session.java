@@ -1,15 +1,26 @@
 package org.apache.coyote.http11.common;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class Session {
 
     private final String id;
     private final Map<String, Object> items = new HashMap<>();
 
+    public Session() {
+        this(UUID.randomUUID().toString(), Collections.emptyMap());
+    }
+
     public Session(final String id) {
+        this(id, Collections.emptyMap());
+    }
+
+    public Session(final String id, Map<String, Object> attributes) {
         this.id = id;
+        this.items.putAll(attributes);
     }
 
     public Object getAttribute(final String key) {

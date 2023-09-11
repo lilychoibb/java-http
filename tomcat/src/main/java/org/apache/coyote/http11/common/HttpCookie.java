@@ -2,6 +2,7 @@ package org.apache.coyote.http11.common;
 
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.coyote.http11.common.Constants.EMPTY;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,11 +42,15 @@ public class HttpCookie {
     }
 
     public String get(final String key) {
-        return items.get(key);
+        return items.getOrDefault(key, EMPTY);
     }
 
     public String getJSessionId() {
-        return items.get(JSESSION_ID);
+        return items.getOrDefault(JSESSION_ID, EMPTY);
+    }
+
+    public boolean isEmpty() {
+        return items.isEmpty();
     }
 
     public Map<String, String> getItems() {

@@ -1,12 +1,13 @@
 package org.apache.coyote.http11.request;
 
+import static org.apache.coyote.http11.common.HttpVersion.HTTP_1_1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import org.apache.coyote.http11.common.Http11Exception;
 import org.apache.coyote.http11.common.HttpMethod;
-import org.apache.coyote.http11.exception.InvalidRequestLineException;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ class RequestLineTest {
 
         // expect
         assertThatThrownBy(() -> RequestLine.from(line))
-                .isInstanceOf(InvalidRequestLineException.class)
+                .isInstanceOf(Http11Exception.class)
                 .hasMessage("올바르지 않은 RequestLine 형식입니다.");
     }
 
@@ -37,8 +38,8 @@ class RequestLineTest {
         // then
         assertAll(
                 () -> assertThat(requestLine.getHttpMethod()).isEqualTo(HttpMethod.GET),
-                () -> assertThat(requestLine.getUri()).isEqualTo("/index.html"),
-                () -> assertThat(requestLine.getHttpVersion()).isEqualTo("HTTP/1.1")
+                () -> assertThat(requestLine.parseUri()).isEqualTo("/index.html"),
+                () -> assertThat(requestLine.getHttpVersion()).isEqualTo(HTTP_1_1)
         );
     }
 
@@ -49,7 +50,7 @@ class RequestLineTest {
         final RequestLine requestLine = RequestLine.from(line);
 
         // when
-        final String result = requestLine.parseUriWithOutQueryString();
+        final String result = requestLine.parseUri();
 
         // then
         assertThat(result).isEqualTo("/login");

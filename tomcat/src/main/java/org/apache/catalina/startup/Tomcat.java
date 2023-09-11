@@ -1,17 +1,30 @@
 package org.apache.catalina.startup;
 
+import java.io.IOException;
+import java.util.Map;
+import org.apache.catalina.RequestAdapter;
+import org.apache.catalina.RequestMapper;
 import org.apache.catalina.connector.Connector;
+import org.apache.catalina.controller.Controller;
+import org.apache.coyote.http11.Adapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
 
 public class Tomcat {
 
     private static final Logger log = LoggerFactory.getLogger(Tomcat.class);
+    private static final int DEFAULT_THREAD_COUNT = 250;
+
+    private final Adapter adapter;
+
+    public Tomcat(final Map<String, Controller> controllers) {
+        final RequestMapper requestMapper = new RequestMapper(controllers);
+        this.adapter = new RequestAdapter(requestMapper);
+    }
 
     public void start() {
-        var connector = new Connector();
+        final Connector connector = new Connector(adapter, DEFAULT_THREAD_COUNT);
+
         connector.start();
 
         try {
