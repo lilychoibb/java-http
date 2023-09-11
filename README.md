@@ -15,3 +15,12 @@
   - [x] 로그인 페이지도 POST 방식
 - [x] Cookie에 JSESSIONID 값 저장
 - [x] Session 구현
+
+3단계 리팩터링
+- [x] HttpRequest 구현
+- [x] HttpResponse 구현
+- [x] Controller 구현
+
+4단계 동시성 확장하기
+- [x] Executors로 Thread Pool 적용
+- [x] 동시성 컬렉션 사용하기
