@@ -15,15 +15,18 @@ public class Connector implements Runnable {
 
     private static final int DEFAULT_PORT = 8080;
     private static final int DEFAULT_ACCEPT_COUNT = 100;
+    private static final int DEFAULT_THREAD_POOL_COUNT = 5;
 
+    private final FixedThreadPool threadPool;
     private final ServerSocket serverSocket;
     private boolean stopped;
 
     public Connector() {
-        this(DEFAULT_PORT, DEFAULT_ACCEPT_COUNT);
+        this(DEFAULT_THREAD_POOL_COUNT, DEFAULT_PORT, DEFAULT_ACCEPT_COUNT);
     }
 
-    public Connector(final int port, final int acceptCount) {
+    public Connector(final int threadPoolCount, final int port, final int acceptCount) {
+        this.threadPool = new FixedThreadPool(threadPoolCount);
         this.serverSocket = createServerSocket(port, acceptCount);
         this.stopped = false;
     }
@@ -67,7 +70,7 @@ public class Connector implements Runnable {
             return;
         }
         var processor = new Http11Processor(connection);
-        new Thread(processor).start();
+        threadPool.run(processor);
     }
 
     public void stop() {
