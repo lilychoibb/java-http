@@ -7,12 +7,14 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
-import nextstep.jwp.Handler;
+import nextstep.jwp.controller.FrontController;
 import nextstep.jwp.exception.UncheckedServletException;
 import org.apache.coyote.Processor;
+import org.apache.catalina.controller.Controller;
 import org.apache.coyote.http11.request.HttpRequest;
 import org.apache.coyote.http11.request.RequestBody;
 import org.apache.coyote.http11.response.HttpResponse;
+import org.apache.coyote.http11.response.ResponseViewer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +44,13 @@ public class Http11Processor implements Runnable, Processor {
             RequestBody requestBody = readRequestBody(requestHeader, bufferedReader);
 
             HttpRequest httpRequest = HttpRequest.of(requestHeader, requestBody);
-            HttpResponse httpResponse = Handler.run(httpRequest);
 
-            outputStream.write(httpResponse.getResponse().getBytes());
+            Controller frontController = new FrontController();
+            HttpResponse httpResponse = new HttpResponse();
+            frontController.service(httpRequest, httpResponse);
+            ResponseViewer from = ResponseViewer.from(httpResponse);
+
+            outputStream.write(from.getView().getBytes());
             outputStream.flush();
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);

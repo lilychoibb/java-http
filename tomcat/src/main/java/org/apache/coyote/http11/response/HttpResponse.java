@@ -1,97 +1,55 @@
 package org.apache.coyote.http11.response;
 
-import org.apache.coyote.http11.cookie.HttpCookie;
-import org.apache.coyote.http11.request.ContentType;
+
+import org.apache.coyote.http11.common.Headers;
+import org.apache.coyote.http11.common.HttpCookie;
 
 public class HttpResponse {
 
-    private static final String ENTER = "\r\n";
-    private static final String KEY_VALUE_DELIMITER = "=";
+    private StatusLine statusLine;
+    private Headers headers = Headers.empty();
+    private ResponseBody responseBody;
 
-    private final HttpStatus httpStatus;
-    private final String responseBody;
-    private final ContentType contentType;
-    private final String redirectPage;
-    private final HttpCookie httpCookie;
+    public HttpResponse statusLine(StatusLine statusLine) {
+        this.statusLine = statusLine;
+        return this;
+    }
 
-    private HttpResponse(
-            HttpStatus httpStatus,
-            String responseBody,
-            ContentType contentType,
-            String redirectPage,
-            HttpCookie httpCookie
-    ) {
-        this.httpStatus = httpStatus;
+    public HttpResponse redirect(String uri) {
+        this.headers.add("Location", uri);
+        return this;
+    }
+
+    public HttpResponse contentType(String contentType) {
+        this.headers.add("Content-Type", contentType + ";charset=utf-8");
+        return this;
+    }
+
+    public HttpResponse contentLength(int contentLength) {
+        this.headers.add("Content-Length", String.valueOf(contentLength));
+        return this;
+    }
+
+    public HttpResponse setCookie(HttpCookie httpCookie) {
+        this.headers.setCookie(httpCookie);
+        return this;
+    }
+
+    public HttpResponse responseBody(ResponseBody responseBody) {
         this.responseBody = responseBody;
-        this.contentType = contentType;
-        this.redirectPage = redirectPage;
-        this.httpCookie = httpCookie;
+        return this;
     }
 
-    public String getResponse() {
-        String statusLine = "HTTP/1.1 " + httpStatus.getStatusCode() + " " + httpStatus.name() + " ";
-        String contentTypeHeader = "Content-Type: " + contentType.getValue() + ";charset=utf-8 ";
-        String contentLengthHeader = "Content-Length: " + responseBody.getBytes().length + " ";
-
-        StringBuilder response = new StringBuilder();
-        response.append(statusLine).append(ENTER)
-                .append(contentTypeHeader).append(ENTER)
-                .append(contentLengthHeader).append(ENTER);
-
-        if (redirectPage != null) {
-            response.append("Location: http://localhost:8080/").append(redirectPage + " ").append(ENTER);
-        }
-        if (httpCookie != null) {
-            response.append("Set-Cookie: ").append(
-                    "JSESSIONID" + KEY_VALUE_DELIMITER + httpCookie.getValue("JSESSIONID") + " "
-            ).append(ENTER);
-        }
-
-        response.append(ENTER).append(responseBody);
-        return response.toString();
+    public StatusLine getStatusLine() {
+        return statusLine;
     }
 
-    public static class Builder {
-
-        private HttpStatus httpStatus;
-        private String responseBody;
-        private ContentType contentType;
-        private String redirectPage;
-        private HttpCookie httpCookie;
-
-        public Builder httpStatus(HttpStatus httpStatus) {
-            this.httpStatus = httpStatus;
-            return this;
-        }
-
-        public Builder responseBody(String responseBody) {
-            this.responseBody = responseBody;
-            return this;
-        }
-
-        public Builder contentType(ContentType contentType) {
-            this.contentType = contentType;
-            return this;
-        }
-
-        public Builder redirectPage(String redirectPage) {
-            this.redirectPage = redirectPage;
-            return this;
-        }
-
-        public Builder httpCookie(HttpCookie httpCookie) {
-            this.httpCookie = httpCookie;
-            return this;
-        }
-
-        public HttpResponse build() {
-            return new HttpResponse(httpStatus, responseBody, contentType, redirectPage, httpCookie);
-        }
-
+    public Headers getHeaders() {
+        return headers;
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public ResponseBody getResponseBody() {
+        return responseBody;
     }
 
 }

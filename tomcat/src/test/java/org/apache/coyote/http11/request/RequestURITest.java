@@ -1,6 +1,5 @@
-package org.apache.coyote.http11;
+package org.apache.coyote.http11.request;
 
-import org.apache.coyote.http11.request.RequestURI;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
@@ -45,7 +44,7 @@ class RequestURITest {
         RequestURI requestURI = RequestURI.from(uri);
 
         // then
-        assertThat(requestURI.getResourcePath()).isEqualTo("static/login.html");
+        assertThat(requestURI.getResourcePath()).isEqualTo("/login.html");
     }
 
 }

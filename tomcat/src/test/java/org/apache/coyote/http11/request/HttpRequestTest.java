@@ -1,4 +1,4 @@
-package org.apache.coyote.http11;
+package org.apache.coyote.http11.request;
 
 import java.util.List;
 
@@ -6,6 +6,7 @@ import org.apache.coyote.http11.request.ContentType;
 import org.apache.coyote.http11.request.HttpRequest;
 import org.apache.coyote.http11.request.RequestBody;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
@@ -21,10 +22,9 @@ class HttpRequestTest {
                 "GET /login.html HTTP/1.1",
                 "Host: localhost:8080/login?username=gugu&password=password",
                 "Connection: keep-alive");
-        RequestBody requestBody = new RequestBody();
 
         // when
-        HttpRequest httpRequest = HttpRequest.of(request, requestBody);
+        HttpRequest httpRequest = HttpRequest.of(request, RequestBody.from(""));
 
         // then
         Assertions.assertThat(httpRequest.contentType()).isEqualTo(ContentType.HTML);
@@ -40,7 +40,7 @@ class HttpRequestTest {
                 "Connection: keep-alive");
 
         // when
-        HttpRequest httpRequest = HttpRequest.of(request, new RequestBody());
+        HttpRequest httpRequest = HttpRequest.of(request, RequestBody.from(""));
 
         // then
         Assertions.assertThat(httpRequest.contentType()).isEqualTo(ContentType.JAVASCRIPT);
