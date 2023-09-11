@@ -12,6 +12,9 @@ public class HttpCookie {
 
     private static final String DELIMITER = "; ";
     private static final String EQUAL = "=";
+    private static final int KEY_INDEX = 0;
+    private static final int VALUE_INDEX = 1;
+    private static final int SPLIT_LIMIT = 2;
 
     private final Map<String, String> items;
 
@@ -28,9 +31,9 @@ public class HttpCookie {
             return new HttpCookie();
         }
         return Arrays.stream(cookieHeader.split(DELIMITER))
-                .map(it -> it.split(EQUAL, 2))
+                .map(it -> it.split(EQUAL, SPLIT_LIMIT))
                 .collect(collectingAndThen(
-                        toMap(it -> it[0], it -> it[1]),
+                        toMap(it -> it[KEY_INDEX], it -> it[VALUE_INDEX]),
                         HttpCookie::new
                 ));
     }
@@ -41,10 +44,6 @@ public class HttpCookie {
 
     public boolean contains(final String key) {
         return items.containsKey(key);
-    }
-
-    public String getCookie(final String key) {
-        return items.get(key);
     }
 
     @Override

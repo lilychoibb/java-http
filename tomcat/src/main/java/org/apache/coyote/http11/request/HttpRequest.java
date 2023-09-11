@@ -67,10 +67,6 @@ public class HttpRequest {
         return requestHeader;
     }
 
-    public Map<String, String> getQueryParameter() {
-        return requestLine.getRequestPath().getQueryParameter();
-    }
-
     public Map<String, String> getRequestBody() {
         return requestBody.getBody();
     }
