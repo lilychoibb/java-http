@@ -3,87 +3,107 @@ package org.apache.coyote.context;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.coyote.Container;
+import org.apache.coyote.Context;
 import org.apache.coyote.Handler;
 import org.apache.coyote.context.exception.InvalidRootContextPathException;
-import org.apache.coyote.handler.LoginHandler;
-import org.apache.coyote.handler.LoginPageHandler;
-import org.apache.coyote.handler.RegisterHandler;
-import org.apache.coyote.handler.RegisterPageHandler;
-import org.apache.coyote.handler.ResourceHandler;
-import org.apache.coyote.handler.WelcomeHandler;
+import org.apache.coyote.context.exception.InvalidStaticResourcePathException;
+import org.apache.coyote.context.exception.UnsupportedApiException;
 import org.apache.coyote.http.SessionManager;
+import servlet.request.HttpRequest;
 import org.apache.coyote.http.request.Request;
 import org.apache.coyote.http.response.ContentType;
 import org.apache.coyote.http.response.HttpStatusCode;
 import org.apache.coyote.http.response.Response;
+import org.apache.coyote.http.util.HeaderDto;
 import org.apache.coyote.http.util.HttpConsts;
+import org.apache.coyote.http.util.HttpHeaderConsts;
+import org.apache.coyote.http.util.ResponseGenerator;
 import org.apache.coyote.http.util.exception.UnsupportedHttpMethodException;
+import servlet.Controller;
+import servlet.response.HttpResponse;
 
-public class HelloWorldContext implements Container {
+public class HelloWorldContext implements Context {
 
     private static final SessionManager SESSION_MANAGER = new SessionManager();
     private static final String DEFAULT_STATIC_RESOURCE_PATH_PREFIX = "static/";
 
-    private final String rootContextPath;
+    private final String contextPath;
     private final String staticResourcePath;
     private final List<Handler> handlers = new ArrayList<>();
-    private final Handler resourceHandler;
+    private final Controller controller;
 
-    public HelloWorldContext(final String rootContextPath) {
-        this(rootContextPath, DEFAULT_STATIC_RESOURCE_PATH_PREFIX);
+    public HelloWorldContext(final String contextPath, final Controller controller) {
+        this(contextPath, DEFAULT_STATIC_RESOURCE_PATH_PREFIX, controller);
     }
 
-    public HelloWorldContext(final String rootContextPath, final String staticResourcePath) {
-        if (rootContextPath == null || rootContextPath.isEmpty() || rootContextPath.isBlank()) {
+    public HelloWorldContext(final String contextPath, final String staticResourcePath, final Controller controller) {
+        validateRootContextPath(contextPath);
+        validatePath(staticResourcePath);
+
+        this.contextPath = contextPath;
+        this.staticResourcePath = staticResourcePath;
+        this.controller = controller;
+    }
+
+    private void validateRootContextPath(final String contextPath) {
+        if (contextPath == null || !contextPath.startsWith(HttpConsts.SLASH)) {
             throw new InvalidRootContextPathException();
         }
-
-        this.rootContextPath = rootContextPath;
-        this.staticResourcePath = staticResourcePath;
-        this.resourceHandler = new ResourceHandler(staticResourcePath);
-
-        initHandlers();
     }
 
-    private void initHandlers() {
-        handlers.add(new WelcomeHandler(rootContextPath));
-        handlers.add(new LoginHandler("/login", rootContextPath));
-        handlers.add(new LoginPageHandler("/login", rootContextPath, "login.html", staticResourcePath));
-        handlers.add(new RegisterPageHandler("/register", rootContextPath, "register.html", staticResourcePath));
-        handlers.add(new RegisterHandler("/register", rootContextPath));
+    private void validatePath(final String staticResourcePath) {
+        if (staticResourcePath == null || !staticResourcePath.endsWith(HttpConsts.SLASH)) {
+            throw new InvalidStaticResourcePathException();
+        }
     }
 
     @Override
     public boolean supports(final Request request) {
-        return request.matchesByRootContextPath(rootContextPath);
+        return request.matchesByContextPath(contextPath);
     }
 
     @Override
     public Response service(final Request request) throws IOException {
         try {
             return process(request);
-        } catch (UnsupportedHttpMethodException ex) {
-            return Response.of(request, HttpStatusCode.METHOD_NOT_ALLOWED, ContentType.JSON, HttpConsts.BLANK);
+        } catch (final UnsupportedHttpMethodException e) {
+            return ResponseGenerator.createRedirectResponse(request, "/406.html");
+        } catch (final UnsupportedApiException e) {
+            return ResponseGenerator.createRedirectResponse(request, "/404.html");
         }
     }
 
     private Response process(final Request request) throws IOException {
-        for (final Handler handler : handlers) {
-            if (handler.supports(request)) {
-                request.initSessionManager(SESSION_MANAGER);
-                return handler.service(request);
+        final HttpRequest httpRequest = new HttpRequest(request, contextPath, SESSION_MANAGER);
+        final HttpResponse httpResponse = new HttpResponse();
+
+        if (httpRequest.isBusinessLogic(contextPath)) {
+            try {
+                controller.service(httpRequest, httpResponse);
+
+                return ResponseGenerator.generate(httpRequest, httpResponse);
+            } catch (final Exception e) {
+                return Response.of(
+                        request,
+                        HttpStatusCode.FOUND,
+                        ContentType.TEXT_HTML,
+                        HttpConsts.BLANK,
+                        new HeaderDto(HttpHeaderConsts.LOCATION, "/500.html")
+                );
             }
         }
 
-        return processStaticResources(request);
-    }
-
-    private Response processStaticResources(final Request request) throws IOException {
-        if (resourceHandler.supports(request)) {
-            return resourceHandler.service(request);
+        for (final Handler handler : handlers) {
+            if (handler.supports(request, contextPath)) {
+                return handler.service(request, staticResourcePath);
+            }
         }
 
-        return Response.of(request, HttpStatusCode.NOT_FOUND, ContentType.JSON, "존재하지 않는 api 입니다.");
+        throw new UnsupportedApiException();
+    }
+
+    @Override
+    public void addHandler(final Handler handler) {
+        this.handlers.add(handler);
     }
 }

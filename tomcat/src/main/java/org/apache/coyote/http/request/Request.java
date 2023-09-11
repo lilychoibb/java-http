@@ -9,92 +9,79 @@ import org.apache.coyote.http.util.HttpVersion;
 public class Request {
 
     private final HttpRequestHeaders headers;
-    private final HttpMethod method;
-    private final HttpVersion version;
-    private final Url url;
+    private final RequestLine requestLine;
     private final HttpRequestBody body;
-    private final QueryParameters queryParameters;
+    private final Parameters parameters;
     private final HttpCookie cookie;
-    private SessionManager sessionManager;
 
     public Request(
             final HttpRequestHeaders headers,
-            final HttpMethod method,
-            final HttpVersion version,
-            final Url url,
+            final RequestLine requestLine,
             final HttpRequestBody body,
-            final QueryParameters queryParameters
+            final Parameters parameters
     ) {
-        this(headers, method, version, url, body, queryParameters, HttpCookie.EMPTY);
+        this(headers, requestLine, body, parameters, HttpCookie.EMPTY);
     }
 
     public Request(
             final HttpRequestHeaders headers,
-            final HttpMethod method,
-            final HttpVersion version,
-            final Url url,
+            final RequestLine requestLine,
             final HttpRequestBody body,
-            final QueryParameters queryParameters,
+            final Parameters parameters,
             final HttpCookie cookie
     ) {
         this.headers = headers;
-        this.method = method;
-        this.version = version;
-        this.url = url;
+        this.requestLine = requestLine;
         this.body = body;
-        this.queryParameters = queryParameters;
+        this.parameters = parameters;
         this.cookie = cookie;
-    }
-
-    public void initSessionManager(final SessionManager sessionManager) {
-        this.sessionManager = sessionManager;
     }
 
     public String findHeaderValue(final String headerKey) {
         return headers.findValue(headerKey);
     }
 
-    public String findQueryParameterValue(final String queryParameterKey) {
-        return queryParameters.findValue(queryParameterKey);
+    public String findParameterValue(final String parameterKey) {
+        return parameters.findValue(parameterKey);
     }
 
     public boolean matchesByMethod(final HttpMethod method) {
-        return this.method.matches(method);
+        return requestLine.matchesByMethod(method);
     }
 
-    public boolean matchesByPath(final String targetPath, final String rootContextPath) {
-        return url.matchesByPath(targetPath, rootContextPath);
+    public boolean matchesByPathExcludingContextPath(final String targetPath, final String contextPath) {
+        return requestLine.matchesByPathExcludingContextPath(targetPath, contextPath);
     }
 
-    public boolean matchesByRootContextPath(final String rootContextPath) {
-        return url.startsWithRootContextPath(rootContextPath);
+    public boolean matchesByContextPath(final String contextPath) {
+        return requestLine.matchesByContextPath(contextPath);
     }
 
-    public boolean isWelcomePageRequest(final String rootContextPath) {
-        return url.isWelcomePageUrl(rootContextPath);
+    public boolean isWelcomePageRequest(final String contextPath) {
+        return requestLine.isWelcomePageRequest(contextPath);
     }
 
     public boolean isStaticResource() {
-        return url.isStaticResource();
+        return requestLine.isStaticResource();
     }
 
     public boolean hasQueryParameters() {
-        return queryParameters.size() > 0;
+        return parameters.size() > 0;
     }
 
     public HttpVersion version() {
-        return version;
+        return requestLine.version();
     }
 
     public String url() {
-        return url.url();
+        return requestLine.url().url();
     }
 
     public String resourceName() {
-        return url.resourceName();
+        return requestLine.url().resourceName();
     }
 
-    public HttpSession getSession(final boolean create) {
+    public HttpSession getSession(final boolean create, final SessionManager sessionManager) {
         final String sessionId = cookie.findValue(HttpCookie.SESSION_ID_KEY);
 
         if (create && sessionId == null) {
@@ -102,6 +89,10 @@ public class Request {
             sessionManager.add(httpSession);
 
             return httpSession;
+        }
+
+        if (sessionId == null) {
+            return null;
         }
 
         return sessionManager.findSession(sessionId);

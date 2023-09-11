@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayNameGeneration;
 import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("NonAsciiCharacters")
 @DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class RequestGeneratorTest {
 
@@ -27,9 +28,8 @@ class RequestGeneratorTest {
                 "");
         final InputStream inputStream = new ByteArrayInputStream(requestMessage.getBytes(StandardCharsets.UTF_8));
         final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        final RequestGenerator generator = new RequestGenerator();
 
-        final Request actual = generator.generate(bufferedReader);
+        final Request actual = RequestGenerator.generate(bufferedReader);
 
         assertThat(actual).isNotNull();
     }
@@ -45,11 +45,10 @@ class RequestGeneratorTest {
                 "");
         final InputStream inputStream = new ByteArrayInputStream(requestMessage.getBytes(StandardCharsets.UTF_8));
         final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        final RequestGenerator generator = new RequestGenerator();
 
-        final Request actual = generator.generate(bufferedReader);
+        final Request actual = RequestGenerator.generate(bufferedReader);
 
-        assertThat(actual.findQueryParameterValue("user")).isEqualTo("gugu");
+        assertThat(actual.findParameterValue("user")).isEqualTo("gugu");
     }
 
     @Test
@@ -64,10 +63,9 @@ class RequestGeneratorTest {
                 "user=gugu");
         final InputStream inputStream = new ByteArrayInputStream(requestMessage.getBytes(StandardCharsets.UTF_8));
         final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-        final RequestGenerator generator = new RequestGenerator();
 
-        final Request actual = generator.generate(bufferedReader);
+        final Request actual = RequestGenerator.generate(bufferedReader);
 
-        assertThat(actual.findQueryParameterValue("user")).isEqualTo("gugu");
+        assertThat(actual.findParameterValue("user")).isEqualTo("gugu");
     }
 }

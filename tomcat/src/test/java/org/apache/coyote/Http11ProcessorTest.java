@@ -6,16 +6,32 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.List;
+import mvc.controller.AbstractPathController;
+import mvc.controller.FrontController;
+import mvc.controller.LoginController;
+import mvc.controller.RegisterController;
+import mvc.controller.mapping.RequestMapping;
+import nextstep.jwp.application.UserService;
+import org.apache.coyote.context.HelloWorldContext;
+import org.apache.coyote.handler.ResourceHandler;
+import org.apache.coyote.handler.WelcomeHandler;
 import org.apache.coyote.http11.Http11Processor;
+import org.junit.jupiter.api.DisplayNameGeneration;
+import org.junit.jupiter.api.DisplayNameGenerator;
 import org.junit.jupiter.api.Test;
 import support.StubSocket;
 
+@SuppressWarnings("NonAsciiCharacters")
+@DisplayNameGeneration(DisplayNameGenerator.ReplaceUnderscores.class)
 class Http11ProcessorTest {
 
     @Test
     void process() {
         final var socket = new StubSocket();
-        final var processor = new Http11Processor(socket);
+        final HelloWorldContext context = new HelloWorldContext("/", null);
+        context.addHandler(new WelcomeHandler());
+        final var processor = new Http11Processor(socket, List.of(context));
 
         processor.process(socket);
 
@@ -26,7 +42,8 @@ class Http11ProcessorTest {
                 "",
                 "Hello World!");
 
-        assertThat(socket.output()).isEqualTo(expected);
+        final String output = socket.output();
+        assertThat(output).isEqualTo(expected);
     }
 
     @Test
@@ -39,13 +56,13 @@ class Http11ProcessorTest {
                 "");
 
         final var socket = new StubSocket(httpRequest);
-        final Http11Processor processor = new Http11Processor(socket);
+        final Http11Processor processor = new Http11Processor(socket, List.of(new HelloWorldContext("/", null)));
 
         processor.process(socket);
 
         final String actual = socket.output();
 
-        assertThat(actual).contains("404 Not Found");
+        assertThat(actual).contains("/404.html");
     }
 
     @Test
@@ -56,9 +73,17 @@ class Http11ProcessorTest {
                 "Connection: keep-alive ",
                 "",
                 "");
-
         final var socket = new StubSocket(httpRequest);
-        final Http11Processor processor = new Http11Processor(socket);
+        final List<AbstractPathController> controllers = List.of(
+                new LoginController("/login", new UserService()),
+                new RegisterController("/register", new UserService()));
+        final RequestMapping requestMapping =  new RequestMapping(controllers);
+        final HelloWorldContext context = new HelloWorldContext("/", new FrontController(requestMapping));
+        context.addHandler(new ResourceHandler());
+        final Http11Processor processor = new Http11Processor(
+                socket,
+                List.of(context)
+        );
 
         processor.process(socket);
 

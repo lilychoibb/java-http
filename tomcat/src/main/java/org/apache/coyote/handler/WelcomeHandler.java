@@ -11,27 +11,21 @@ public class WelcomeHandler implements Handler {
 
     private static final String WELCOME_PAGE_CONTENT = "Hello World!";
 
-    private final String rootContextPath;
-
-    public WelcomeHandler(final String rootContextPath) {
-        this.rootContextPath = rootContextPath;
-    }
-
     @Override
-    public boolean supports(final Request request) {
-        return isGetMethod(request) && isWelcomePageRequest(request);
+    public boolean supports(final Request request, final String contextPath) {
+        return isGetMethod(request) && isWelcomePageRequest(request, contextPath);
     }
 
     private boolean isGetMethod(final Request request) {
         return request.matchesByMethod(HttpMethod.GET);
     }
 
-    private boolean isWelcomePageRequest(final Request request) {
-        return request.isWelcomePageRequest(rootContextPath);
+    private boolean isWelcomePageRequest(final Request request, final String contextPath) {
+        return request.isWelcomePageRequest(contextPath);
     }
 
     @Override
-    public Response service(final Request request) {
+    public Response service(final Request request, final String ignoreResourcePath) {
         return Response.of(request, HttpStatusCode.OK, ContentType.TEXT_HTML, WELCOME_PAGE_CONTENT);
     }
 }
