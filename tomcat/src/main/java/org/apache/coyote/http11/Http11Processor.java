@@ -1,10 +1,13 @@
 package org.apache.coyote.http11;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
 import nextstep.jwp.exception.UncheckedServletException;
-import org.apache.coyote.Processor;
+import org.apache.coyote.RunnableProcessor;
 import org.apache.coyote.http.controller.HttpController;
 import org.apache.coyote.http.controller.HttpControllers;
 import org.apache.coyote.http.controller.ViewRenderer;
@@ -16,17 +19,22 @@ import org.apache.coyote.http.session.SessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Http11Processor implements Runnable, Processor {
+public class Http11Processor implements Runnable, RunnableProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
     private static final ViewRenderer viewRenderer = new ViewRenderer();
+    private static final HttpControllers httpControllers = HttpControllers.readControllers();
 
     private final Socket connection;
-    private final HttpControllers httpControllers;
+    private final Semaphore semaphore;
 
     public Http11Processor(final Socket connection) {
+        this(connection, null);
+    }
+
+    public Http11Processor(final Socket connection, final Semaphore semaphore) {
         this.connection = connection;
-        this.httpControllers = HttpControllers.readControllers();
+        this.semaphore = semaphore;
     }
 
     @Override
@@ -38,12 +46,13 @@ public class Http11Processor implements Runnable, Processor {
     @Override
     public void process(final Socket connection) {
         try (final var inputStream = connection.getInputStream();
-             final var outputStream = connection.getOutputStream()) {
+            final var outputStream = connection.getOutputStream();
+            final var bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
             HttpRequestDecoder requestDecoder = new HttpRequestDecoder();
-            HttpRequest httpRequest = requestDecoder.decode(inputStream);
+            HttpRequest httpRequest = requestDecoder.decode(bufferedReader);
 
             Optional<String> sessionId = httpRequest.getSessionId();
-            Session session = SessionManager.findSession(sessionId.orElse(null));
+            Session session = SessionManager.findOrCreate(sessionId.orElse(null));
 
             HttpResponse httpResponse = new HttpResponse();
             Optional<HttpController> controller = httpControllers.get(httpRequest.getPath());
@@ -60,6 +69,9 @@ public class Http11Processor implements Runnable, Processor {
             outputStream.flush();
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);
+        }
+        if (semaphore != null) {
+            semaphore.release();
         }
     }
 }
