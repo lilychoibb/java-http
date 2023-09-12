@@ -1,4 +1,4 @@
-package nextstep.jwp;
+package nextstep.jwp.utils;
 
 public class Constant {
 
@@ -6,4 +6,5 @@ public class Constant {
     }
 
     public static final String CRLF = "\r\n";
+    public static final String SESSION_ID = "JSESSIONID";
 }

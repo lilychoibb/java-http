@@ -1,22 +1,23 @@
 package nextstep.jwp.handler;
 
-import java.io.IOException;
-import org.apache.catalina.SessionManager;
-import org.apache.coyote.http11.HttpRequest;
-import org.apache.coyote.http11.HttpResponse;
-import org.apache.coyote.http11.HttpResponseParser;
+import nextstep.jwp.controller.Controller;
+import org.apache.coyote.http11.request.HttpRequest;
+import org.apache.coyote.http11.response.HttpResponse;
 
 public class Handler {
 
-    private static final RequestHandler requestHandler = new RequestHandler(new SessionManager());
+    private static ExceptionHandler exceptionHandler = new ExceptionHandler();
 
-    public static String handle(HttpRequest request) {
+    public static HttpResponse handle(HttpRequest request) {
+        Controller controller = RequestMapping.getController(request);
+        HttpResponse response = new HttpResponse();
         try {
-            HttpResponse response = requestHandler.handle(request);
-            return HttpResponseParser.parse(response);
-        } catch (IOException e) {
-            HttpResponse response = HttpResponse.found("/500.html");
-            return HttpResponseParser.parse(response);
+            controller.service(request, response);
+            return response;
+        } catch (DashboardException e) {
+            return exceptionHandler.handle(e);
+        } catch (Exception e){
+            return exceptionHandler.handleInternalServerError();
         }
     }
 }
