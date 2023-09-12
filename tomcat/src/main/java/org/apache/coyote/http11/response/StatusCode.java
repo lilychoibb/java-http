@@ -5,7 +5,8 @@ public enum StatusCode {
     OK(200),
     FOUND(302),
     UNAUTHORIZED(401),
-    BAD_REQUEST(404);
+    NOT_FOUND(404),
+    METHOD_NOT_ALLOWED(405);
 
     private final int code;
 

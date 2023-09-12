@@ -20,29 +20,31 @@ public class StaticResourceHandler implements ResourceHandler {
     private static final String RESOURCE_DIRECTORY = "static";
 
     @Override
-    public boolean supports(final HttpRequest httpRequest) {
-        return HttpMethod.GET == httpRequest.getHttpMethod();
+    public boolean supports(final HttpRequest request) {
+        return HttpMethod.GET == request.getHttpMethod();
     }
 
     @Override
-    public HttpResponse handle(final HttpRequest httpRequest) throws IOException {
-        String fileName = RESOURCE_DIRECTORY + httpRequest.getPath();
+    public void service(final HttpRequest request, final HttpResponse response) throws IOException {
+        String fileName = RESOURCE_DIRECTORY + request.getPath();
         URL resource = getClass().getClassLoader().getResource(fileName);
-        if (resource == null) {
-            fileName = RESOURCE_DIRECTORY + NOT_FOUND_PAGE_PATH;
-            resource = getClass().getClassLoader().getResource(fileName);
-            return createHttpResponse(StatusCode.BAD_REQUEST, resource, ContentType.from(fileName).getContentType());
+        if (resource != null) {
+            createHttpResponse(response, StatusCode.OK, resource, ContentType.from(fileName).getContentType());
+            return;
         }
-        return createHttpResponse(StatusCode.OK, resource, ContentType.from(fileName).getContentType());
+        fileName = RESOURCE_DIRECTORY + NOT_FOUND_PAGE_PATH;
+        resource = getClass().getClassLoader().getResource(fileName);
+        createHttpResponse(response, StatusCode.NOT_FOUND, resource, ContentType.from(fileName).getContentType());
     }
 
-    private HttpResponse createHttpResponse(final StatusCode statusCode, final URL resource, final String contentType)
+    private void createHttpResponse(final HttpResponse response, final StatusCode statusCode, final URL resource,
+                                    final String contentType)
             throws IOException {
         final Path path = new File(resource.getPath()).toPath();
         final String body = new String(Files.readAllBytes(path));
-        final HttpResponse httpResponse = new HttpResponse(statusCode, body);
-        httpResponse.addHeader(CONTENT_TYPE, contentType);
-        httpResponse.addHeader(CONTENT_LENGTH, String.valueOf(body.getBytes().length));
-        return httpResponse;
+        response.setStatusCode(statusCode);
+        response.setBody(body);
+        response.addHeader(CONTENT_TYPE, contentType);
+        response.addHeader(CONTENT_LENGTH, String.valueOf(body.getBytes().length));
     }
 }

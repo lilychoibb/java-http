@@ -1,4 +1,4 @@
-package org.apache.coyote.http11.handler;
+package org.apache.catalina.controller;
 
 import java.io.IOException;
 import org.apache.coyote.http11.request.HttpRequest;
@@ -8,5 +8,5 @@ public interface Controller {
 
     boolean supports(final HttpRequest httpRequest);
 
-    HttpResponse handle(final HttpRequest httpRequest) throws IOException;
+    void service(HttpRequest request, HttpResponse response) throws IOException;
 }

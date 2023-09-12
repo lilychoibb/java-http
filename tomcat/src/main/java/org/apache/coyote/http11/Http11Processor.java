@@ -4,10 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import nextstep.jwp.exception.UncheckedServletException;
+import org.apache.catalina.startup.Container;
 import org.apache.coyote.Processor;
-import org.apache.coyote.http11.handler.Controller;
-import org.apache.coyote.http11.handler.ControllerMapper;
 import org.apache.coyote.http11.handler.ResourceHandler;
 import org.apache.coyote.http11.handler.ResourceHandlerMapper;
 import org.apache.coyote.http11.request.HttpRequest;
@@ -21,9 +19,11 @@ public class Http11Processor implements Runnable, Processor {
 
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
 
+    private final Container container;
     private final Socket connection;
 
-    public Http11Processor(final Socket connection) {
+    public Http11Processor(final Container container, final Socket connection) {
+        this.container = container;
         this.connection = connection;
     }
 
@@ -41,24 +41,28 @@ public class Http11Processor implements Runnable, Processor {
              BufferedReader bufferedReader = new BufferedReader(inputStreamReader)) {
 
             final HttpRequest request = HttpRequestReader.read(bufferedReader);
-            if(request == null){
+            if (request.isEmpty()) {
                 return;
             }
             final HttpResponse response = handleRequest(request);
 
             HttpResponseWriter.write(outputStream, response);
             outputStream.flush();
-        } catch (IOException | UncheckedServletException e) {
+        } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
     }
 
     private HttpResponse handleRequest(final HttpRequest request) throws IOException {
-        final Controller controller = ControllerMapper.findController(request);
-        if (controller != null) {
-            return controller.handle(request);
+        HttpResponse response = HttpResponse.create();
+
+        container.handle(request, response);
+        if (!response.isEmpty()) {
+            return response;
         }
+
         final ResourceHandler resourceHandler = ResourceHandlerMapper.findHandler(request);
-        return resourceHandler.handle(request);
+        resourceHandler.service(request, response);
+        return response;
     }
 }

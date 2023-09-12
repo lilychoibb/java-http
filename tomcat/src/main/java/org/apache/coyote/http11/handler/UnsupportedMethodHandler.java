@@ -1,5 +1,6 @@
 package org.apache.coyote.http11.handler;
 
+import static org.apache.coyote.http11.response.HttpResponseHeader.ALLOW;
 import static org.apache.coyote.http11.response.HttpResponseHeader.CONTENT_LENGTH;
 import static org.apache.coyote.http11.response.HttpResponseHeader.CONTENT_TYPE;
 
@@ -13,25 +14,27 @@ import org.apache.coyote.http11.response.ContentType;
 import org.apache.coyote.http11.response.HttpResponse;
 import org.apache.coyote.http11.response.StatusCode;
 
-public class UnsupportedResourceHandler implements ResourceHandler {
+public class UnsupportedMethodHandler implements ResourceHandler {
 
-    private static final String NOT_FOUND_PAGE_PATH = "/404.html";
+    private static final String METHOD_NOT_ALLOWED_PAGE_PATH = "/405.html";
     private static final String RESOURCE_DIRECTORY = "static";
+    private static final String ALLOW_METHOD = "GET";
 
     @Override
-    public boolean supports(final HttpRequest httpRequest) {
+    public boolean supports(final HttpRequest request) {
         return false;
     }
 
     @Override
-    public HttpResponse handle(final HttpRequest httpRequest) throws IOException {
-        String fileName = RESOURCE_DIRECTORY + NOT_FOUND_PAGE_PATH;
+    public void service(final HttpRequest request, final HttpResponse response) throws IOException {
+        String fileName = RESOURCE_DIRECTORY + METHOD_NOT_ALLOWED_PAGE_PATH;
         URL resource = getClass().getClassLoader().getResource(fileName);
         final Path path = new File(resource.getPath()).toPath();
         final String body = new String(Files.readAllBytes(path));
-        final HttpResponse httpResponse = new HttpResponse(StatusCode.BAD_REQUEST, body);
-        httpResponse.addHeader(CONTENT_TYPE, ContentType.HTML.getContentType());
-        httpResponse.addHeader(CONTENT_LENGTH, String.valueOf(body.getBytes().length));
-        return httpResponse;
+        response.setStatusCode(StatusCode.METHOD_NOT_ALLOWED);
+        response.setBody(body);
+        response.addHeader(ALLOW, ALLOW_METHOD);
+        response.addHeader(CONTENT_TYPE, ContentType.HTML.getContentType());
+        response.addHeader(CONTENT_LENGTH, String.valueOf(body.getBytes().length));
     }
 }
