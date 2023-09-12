@@ -1,4 +1,4 @@
-package org.apache.coyote.http11.handler;
+package nextstep.jwp.controller;
 
 import static java.nio.file.Files.*;
 import static org.assertj.core.api.Assertions.*;
@@ -23,9 +23,9 @@ import org.mockito.MockedStatic;
 
 import nextstep.jwp.model.User;
 
-class LoginHandlerTest {
+class LoginControllerTest {
 
-	private static final LoginHandler HANDLER = new LoginHandler();
+	private static final LoginController HANDLER = new LoginController();
 
 	@Test
 	@DisplayName("endpoint가 login이면 true를 반환한다.")
@@ -59,8 +59,9 @@ class LoginHandlerTest {
 				"");
 			final String file = "/login.html";
 			final HttpRequest request = HttpRequestBuilder.from(plainRequest).build();
+			final HttpResponse actual = new HttpResponse();
 
-			final HttpResponse actual = HANDLER.handleTo(request);
+			HANDLER.handleTo(request, actual);
 
 			final URL resource = getClass().getClassLoader().getResource("static" + file);
 			final String expected = "HTTP/1.1 200 OK \r\n" +
@@ -88,13 +89,14 @@ class LoginHandlerTest {
 				"",
 				"");
 			final HttpRequest request = HttpRequestBuilder.from(plainRequest).build();
+			final HttpResponse actual = new HttpResponse();
 
-			final HttpResponse actual = HANDLER.handleTo(request);
+			HANDLER.handleTo(request, actual);
 
 			final String expected = "HTTP/1.1 302 Found \r\n" +
 				"Content-Type: text/html;charset=utf-8 \r\n" +
 				"Content-Length: 0 \r\n" +
-				"Location: http://localhost:8080/index.html \r\n" +
+				"Location: /index.html \r\n" +
 				"\r\n";
 
 			assertThat(actual.buildResponse())
@@ -113,16 +115,17 @@ class LoginHandlerTest {
 			final HttpRequest request = HttpRequestBuilder.from(plainRequest)
 				.body(requestBody)
 				.build();
-			final MockedStatic<UUID> mockUUID = mockStatic(UUID.class);
 			final UUID uuidValue = new UUID(517873L, 2190581L);
+			final MockedStatic<UUID> mockUUID = mockStatic(UUID.class);
 			when(UUID.randomUUID()).thenReturn(uuidValue);
+			final HttpResponse actual = new HttpResponse();
 
-			final HttpResponse actual = HANDLER.handleTo(request);
+			HANDLER.handleTo(request, actual);
 
 			final String expected = "HTTP/1.1 302 Found \r\n" +
 				"Content-Type: text/html;charset=utf-8 \r\n" +
 				"Content-Length: 0 \r\n" +
-				"Location: http://localhost:8080/index.html \r\n" +
+				"Location: /index.html \r\n" +
 				"Set-cookie: JSESSIONID=" + uuidValue + " \r\n" +
 				"\r\n";
 
@@ -148,8 +151,9 @@ class LoginHandlerTest {
 			final HttpRequest request = HttpRequestBuilder.from(plainRequest)
 				.body(requestBody)
 				.build();
+			final HttpResponse actual = new HttpResponse();
 
-			assertThatThrownBy(() -> HANDLER.handleTo(request))
+			assertThatThrownBy(() -> HANDLER.handleTo(request, actual))
 				.isInstanceOf(UnauthorizedException.class);
 		}
 	}

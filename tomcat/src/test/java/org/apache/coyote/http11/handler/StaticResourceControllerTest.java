@@ -14,9 +14,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-class StaticResourceHandlerTest {
+class StaticResourceControllerTest {
 
-	private static final StaticResourceHandler HANDLER = new StaticResourceHandler();
+	private static final StaticResourceController CONTROLLER = new StaticResourceController();
 
 	@Nested
 	@DisplayName("handle 되는 조건을 확인할 수 있다.")
@@ -25,9 +25,14 @@ class StaticResourceHandlerTest {
 		@Test
 		@DisplayName("endpoint가 resources에 있는 파일인 경우 true를 반환한다.")
 		void success() {
-			final HttpRequest request = HttpRequestBuilder.from("GET /index.html HTTP/1.1 ").build();
+			final HttpRequest request = HttpRequestBuilder
+				.from(String.join("\r\n",
+					"GET /index.html HTTP/1.1 ",
+					"Host: localhost:8080 "
+				))
+				.build();
 
-			final boolean supported = HANDLER.isSupported(request);
+			final boolean supported = CONTROLLER.isSupported(request);
 
 			assertThat(supported)
 				.isTrue();
@@ -36,9 +41,14 @@ class StaticResourceHandlerTest {
 		@Test
 		@DisplayName("endpoint가 resources에 없는 파일인 경우 false를 반환한다.")
 		void fail() {
-			final HttpRequest request = HttpRequestBuilder.from("GET /aaa HTTP/1.1 ").build();
+			final HttpRequest request = HttpRequestBuilder
+				.from(String.join("\r\n",
+					"GET /index1.html HTTP/1.1 ",
+					"Host: localhost:8080 "
+				))
+				.build();
 
-			final boolean supported = HANDLER.isSupported(request);
+			final boolean supported = CONTROLLER.isSupported(request);
 
 			assertThat(supported)
 				.isFalse();
@@ -55,8 +65,9 @@ class StaticResourceHandlerTest {
 			"",
 			"");
 		final HttpRequest request = HttpRequestBuilder.from(plainRequest).build();
+		final HttpResponse httpResponse = new HttpResponse();
 
-		final HttpResponse httpResponse = HANDLER.handleTo(request);
+		CONTROLLER.handleTo(request, httpResponse);
 
 		final URL resource = getClass().getClassLoader().getResource("static/index.html");
 		final String expected = "HTTP/1.1 200 OK \r\n" +
