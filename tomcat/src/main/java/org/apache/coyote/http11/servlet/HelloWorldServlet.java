@@ -1,29 +1,29 @@
 package org.apache.coyote.http11.servlet;
 
+import java.io.IOException;
 import java.util.List;
 import org.apache.coyote.http11.common.ContentType;
-import org.apache.coyote.http11.common.HttpHeaderName;
-import org.apache.coyote.http11.common.HttpHeaders;
-import org.apache.coyote.http11.common.request.HttpMethod;
+import org.apache.coyote.http11.common.HttpMethod;
 import org.apache.coyote.http11.common.request.HttpRequest;
 import org.apache.coyote.http11.common.response.HttpResponse;
 import org.apache.coyote.http11.common.response.StatusCode;
 
-public class HelloWorldServlet implements Servlet {
+public class HelloWorldServlet extends Servlet {
 
+    private static final List<HttpMethod> METHODS = List.of(HttpMethod.GET);
     public static final String HELLO_WORLD = "Hello world!";
 
+    public HelloWorldServlet() {
+        super(METHODS);
+    }
+
     @Override
-    public HttpResponse handle(final HttpRequest request) {
-        if (request.getMethod() == HttpMethod.GET) {
-            String body = HELLO_WORLD;
+    protected void doGet(final HttpRequest request, final HttpResponse response) throws IOException {
+        String body = HELLO_WORLD;
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.addHeader(HttpHeaderName.CONTENT_TYPE, ContentType.TEXT_PLAIN.getDetail());
-            headers.addHeader(HttpHeaderName.CONTENT_LENGTH, String.valueOf(body.getBytes().length));
-
-            return HttpResponse.create(StatusCode.OK, headers, body);
-        }
-        return HttpResponse.createMethodNotAllowed(List.of(HttpMethod.GET));
+        response.setStatusCode(StatusCode.OK);
+        response.setContentType(ContentType.TEXT_PLAIN);
+        response.setContentLength(body.getBytes().length);
+        response.setBody(body);
     }
 }

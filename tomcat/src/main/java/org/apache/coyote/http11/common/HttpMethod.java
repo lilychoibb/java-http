@@ -1,7 +1,7 @@
-package org.apache.coyote.http11.common.request;
+package org.apache.coyote.http11.common;
 
 public enum HttpMethod {
-    GET, POST, PATCH, PUT, DELETE, NONE;
+    GET, POST, NONE;
 
     public static HttpMethod from(final String name) {
         try {
