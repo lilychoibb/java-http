@@ -9,23 +9,31 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import nextstep.jwp.exception.UncheckedServletException;
+import org.apache.catalina.Manager;
 import org.apache.coyote.Processor;
 import org.apache.coyote.handler.Handler;
-import org.apache.coyote.handler.HandlerComposite;
+import org.apache.coyote.parser.HttpRequestReader;
+import org.apache.coyote.request.Cookie;
 import org.apache.coyote.request.HttpRequest;
+import org.apache.coyote.request.HttpRequestLine;
+import org.apache.coyote.request.QueryString;
+import org.apache.coyote.request.RequestBody;
+import org.apache.coyote.request.SessionManager;
+import org.apache.coyote.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Http11Processor implements Runnable, Processor {
 
   private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
+  private static final Manager SESSION_MANAGER = new SessionManager();
 
   private final Socket connection;
-  private final HandlerComposite handlerComposite;
+  private final Handler handlerComposite;
 
-  public Http11Processor(final Socket connection, final List<Handler> handlers) {
+  public Http11Processor(final Socket connection, final Handler handler) {
     this.connection = connection;
-    this.handlerComposite = new HandlerComposite(handlers);
+    this.handlerComposite = handler;
   }
 
   @Override
@@ -47,12 +55,24 @@ public class Http11Processor implements Runnable, Processor {
         result.add(line);
       }
 
-      final String httpValue = result.get(0);
-      final HttpRequest httpRequest = HttpRequest.from(httpValue);
+      final HttpRequestLine httpRequestLine = HttpRequestReader.parseHttpRequestLine(result);
+      final RequestBody requestBody = HttpRequestReader.parseRequestBody(result, bufferedReader);
+      final QueryString queryString = HttpRequestReader.parseQueryString(result);
+      final Cookie cookie = HttpRequestReader.parseCookie(result);
 
-      final String response = handlerComposite.safeHandle(httpRequest);
+      final HttpRequest httpRequest = new HttpRequest(
+          httpRequestLine,
+          queryString,
+          requestBody,
+          cookie,
+          SESSION_MANAGER
+      );
 
-      outputStream.write(response.getBytes());
+      final HttpResponse httpResponse = new HttpResponse();
+
+      handlerComposite.safeHandle(httpRequest, httpResponse);
+
+      outputStream.write(httpResponse.read().getBytes());
       outputStream.flush();
     } catch (IOException | UncheckedServletException e) {
       log.error(e.getMessage(), e);
