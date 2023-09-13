@@ -1,9 +1,14 @@
 package org.apache.coyote.http11.response;
 
+import org.apache.catalina.servlet.exception.NotFoundFileException;
+
 import java.io.IOException;
 import java.io.InputStream;
 
 public class StaticResource {
+
+    private static final String FILE_PATH = "static";
+    private static final String FILE_DELIMITER = "\\.";
 
     private final byte[] bytes;
     private final String fileExtension;
@@ -13,18 +18,18 @@ public class StaticResource {
         this.fileExtension = fileExtension;
     }
 
-    public static StaticResource of(String uri) throws IOException {
+    public static StaticResource of(String uri) {
         try {
-            InputStream resourceAsStream = ClassLoader.getSystemResourceAsStream("static" + uri);
+            InputStream resourceAsStream = ClassLoader.getSystemResourceAsStream(FILE_PATH + uri);
             byte[] bytes = resourceAsStream.readAllBytes();
             return new StaticResource(bytes, extractFileExtension(uri));
-        } catch (NullPointerException e) {
-            throw new IOException(e);
+        } catch (IOException | NullPointerException e) {
+            throw new NotFoundFileException();
         }
     }
 
     private static String extractFileExtension(String uri) {
-        return uri.split("\\.")[1].toLowerCase();
+        return uri.split(FILE_DELIMITER)[1].toLowerCase();
     }
 
     public String fileToString() {

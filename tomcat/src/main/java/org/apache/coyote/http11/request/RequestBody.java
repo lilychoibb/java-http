@@ -2,11 +2,18 @@ package org.apache.coyote.http11.request;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toMap;
 
 public class RequestBody {
 
     public static final RequestBody EMPTY = new RequestBody(Map.of());
+    private static final int KEY_VALUE_SIZE = 2;
+    private static final int KEY_INDEX = 0;
+    private static final int BODY_INDEX = 1;
+    private static final String BODY_KEY_VALUE_SEPARATOR = "=";
+    private static final String BODY_SEPARATOR = "&";
 
     private final Map<String, String> body;
 
@@ -15,18 +22,14 @@ public class RequestBody {
     }
 
     public static RequestBody parse(String requestBody) {
-        Map<String, String> body = Arrays.stream(requestBody.split("&"))
-                .map(query -> query.split("="))
-                .collect(Collectors.toMap(query -> query[0], query -> query[1]));
-
-        return new RequestBody(body);
+        return Arrays.stream(requestBody.split(BODY_SEPARATOR))
+                .map(query -> query.split(BODY_KEY_VALUE_SEPARATOR))
+                .filter(body -> body.length == KEY_VALUE_SIZE)
+                .collect(collectingAndThen(toMap(body -> body[KEY_INDEX], body -> body[BODY_INDEX]), RequestBody::new));
     }
 
     public String getBody(String key) {
-        if (body.containsKey(key)) {
-            return body.get(key);
-        }
-        return "";
+        return body.getOrDefault(key, "");
     }
 
     @Override

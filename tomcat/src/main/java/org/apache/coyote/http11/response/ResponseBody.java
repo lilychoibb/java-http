@@ -6,8 +6,8 @@ public class ResponseBody {
 
     public static final ResponseBody EMPTY = new ResponseBody("", ContentType.HTML);
 
-    private final String content;
-    private final ContentType contentType;
+    private String content;
+    private ContentType contentType;
 
     private ResponseBody(String content, ContentType contentType) {
         this.content = content;
@@ -22,11 +22,16 @@ public class ResponseBody {
         return content;
     }
 
+    public void setContent(ResponseBody responseBody) {
+        this.content = responseBody.content;
+        this.contentType = responseBody.contentType;
+    }
+
     public int getLength() {
         return content.getBytes().length;
     }
 
-    public ContentType getContentType() {
-        return contentType;
+    public String getContentTypeName() {
+        return contentType.getName();
     }
 }

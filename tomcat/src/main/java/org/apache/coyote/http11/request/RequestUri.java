@@ -2,6 +2,9 @@ package org.apache.coyote.http11.request;
 
 public class RequestUri {
 
+    private static final String PARAM_SEPARATOR = "?";
+    private static final String PARAM_REGEX = "\\?";
+
     private final String uri;
     private final RequestParams requestParams;
 
@@ -11,8 +14,8 @@ public class RequestUri {
     }
 
     public static RequestUri of(String uri) {
-        if (uri.contains("?")) {
-            String[] split = uri.split("\\?");
+        if (uri.contains(PARAM_SEPARATOR)) {
+            String[] split = uri.split(PARAM_REGEX);
             return new RequestUri(split[0], RequestParams.parse(split[1]));
         }
         return new RequestUri(uri, RequestParams.EMPTY);

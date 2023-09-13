@@ -4,9 +4,17 @@ import org.apache.coyote.http11.exception.NotFoundCookieException;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
 
 public class HttpCookies {
+
+    public static final HttpCookies EMPTY = new HttpCookies(List.of());
+    private static final int KEY_INDEX = 0;
+    private static final int VALUE_INDEX = 1;
+    private static final String COOKIE_KEY_VALUE_SEPARATOR = "=";
+    private static final String COOKIE_SEPARATOR = ";";
 
     private final List<HttpCookie> cookies;
 
@@ -14,18 +22,20 @@ public class HttpCookies {
         this.cookies = cookies;
     }
 
-    public static HttpCookies parse(String cookieHeader) {
-        List<HttpCookie> collect = Arrays.stream(cookieHeader.split(";"))
+    public static HttpCookies parse(String cookieHeaders) {
+        if (cookieHeaders.isEmpty()) {
+            return EMPTY;
+        }
+        return Arrays.stream(cookieHeaders.split(COOKIE_SEPARATOR))
                 .map(String::trim)
-                .map(it -> it.split("="))
-                .map(it -> new HttpCookie(it[0], it[1]))
-                .collect(Collectors.toList());
-        return new HttpCookies(collect);
+                .map(cookieHeader -> cookieHeader.split(COOKIE_KEY_VALUE_SEPARATOR))
+                .map(cookie -> new HttpCookie(cookie[KEY_INDEX], cookie[VALUE_INDEX]))
+                .collect(collectingAndThen(toList(), HttpCookies::new));
     }
 
     public String getCookieValue(String key) {
         return cookies.stream()
-                .filter(it -> it.getKey().equalsIgnoreCase(key))
+                .filter(cookie -> cookie.getKey().equalsIgnoreCase(key))
                 .map(HttpCookie::getValue)
                 .findFirst()
                 .orElseThrow(NotFoundCookieException::new);
@@ -33,6 +43,6 @@ public class HttpCookies {
 
     public boolean existsSession() {
         return cookies.stream()
-                .anyMatch(it -> it.getKey().equalsIgnoreCase("JSESSIONID"));
+                .anyMatch(cookie -> cookie.getKey().equalsIgnoreCase(Constant.JSESSIONID));
     }
 }
