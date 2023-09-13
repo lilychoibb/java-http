@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.*;
 
 public class Connector implements Runnable {
 
@@ -15,15 +16,28 @@ public class Connector implements Runnable {
 
     private static final int DEFAULT_PORT = 8080;
     private static final int DEFAULT_ACCEPT_COUNT = 100;
+    private static final long DEFAULT_KEEP_ALIVE_ALIVE = 60;
+    public static final TimeUnit DEFAULT_TIME_UNIT = TimeUnit.SECONDS;
 
     private final ServerSocket serverSocket;
     private boolean stopped;
+    private final ExecutorService executorService;
 
     public Connector() {
         this(DEFAULT_PORT, DEFAULT_ACCEPT_COUNT);
     }
 
     public Connector(final int port, final int acceptCount) {
+        this.executorService = Executors.newCachedThreadPool();
+        this.serverSocket = createServerSocket(port, acceptCount);
+        this.stopped = false;
+    }
+
+    public Connector(final int port, final int acceptCount, final int maxThreads) {
+        final int coreThreadCount = Runtime.getRuntime().availableProcessors() * 2;
+        final BlockingQueue<Runnable> workQueue = new LinkedBlockingQueue<>(DEFAULT_ACCEPT_COUNT);
+
+        this.executorService = new ThreadPoolExecutor(coreThreadCount, maxThreads, DEFAULT_KEEP_ALIVE_ALIVE, DEFAULT_TIME_UNIT, workQueue);
         this.serverSocket = createServerSocket(port, acceptCount);
         this.stopped = false;
     }
@@ -39,7 +53,7 @@ public class Connector implements Runnable {
     }
 
     public void start() {
-        var thread = new Thread(this);
+        final var thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
         stopped = false;
@@ -66,14 +80,15 @@ public class Connector implements Runnable {
         if (connection == null) {
             return;
         }
-        var processor = new Http11Processor(connection);
-        new Thread(processor).start();
+        final var processor = new Http11Processor(connection);
+        executorService.submit(processor);
     }
 
     public void stop() {
         stopped = true;
         try {
             serverSocket.close();
+            executorService.shutdown();
         } catch (IOException e) {
             log.error(e.getMessage(), e);
         }
