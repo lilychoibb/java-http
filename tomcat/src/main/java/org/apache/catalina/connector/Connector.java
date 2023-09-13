@@ -1,34 +1,62 @@
 package org.apache.catalina.connector;
 
-import org.apache.coyote.http11.Http11Processor;
-import org.apache.coyote.http11.handler.HandlerMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import org.apache.coyote.http11.Http11Processor;
+import org.apache.catalina.controller.ControllerMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Connector implements Runnable {
 
     private static final Logger log = LoggerFactory.getLogger(Connector.class);
-
     private static final int DEFAULT_PORT = 8080;
     private static final int DEFAULT_ACCEPT_COUNT = 100;
+    private static final int MIN_PORT = 1;
+    private static final int MAX_PORT = 65535;
+    private static final int DEFAULT_MAX_THREAD = 250;
+    private static final String SERVER_START_MESSAGE = "Web Application Server started {} port.";
+    public static final int TASK_AWAIT_TIME = 60;
 
     private final ServerSocket serverSocket;
-    private final HandlerMapper handlerMapper;
+    private final ControllerMapper controllerMapper;
     private boolean stopped;
+    private final ExecutorService executorService;
 
-    public Connector(final HandlerMapper handlerMapper) {
-        this(DEFAULT_PORT, DEFAULT_ACCEPT_COUNT, handlerMapper);
+    public Connector(final ControllerMapper controllerMapper) {
+        this(DEFAULT_PORT, DEFAULT_ACCEPT_COUNT, controllerMapper, DEFAULT_MAX_THREAD);
     }
 
-    public Connector(final int port, final int acceptCount, final HandlerMapper handlerMapper) {
+    public Connector(final int port, final int acceptCount, final ControllerMapper controllerMapper) {
+        this(port, acceptCount, controllerMapper, DEFAULT_MAX_THREAD);
+    }
+
+    public Connector(
+            final int port,
+            final int acceptCount,
+            final ControllerMapper controllerMapper,
+            final int maxThreads
+    ) {
         this.serverSocket = createServerSocket(port, acceptCount);
         this.stopped = false;
-        this.handlerMapper = handlerMapper;
+        this.controllerMapper = controllerMapper;
+        this.executorService = new ThreadPoolExecutor(
+                getMaxThread(maxThreads),
+                getMaxThread(maxThreads),
+                0,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(acceptCount)
+        );
+    }
+
+    private int getMaxThread(final int maxThread) {
+        return Math.max(maxThread, DEFAULT_MAX_THREAD);
     }
 
     private ServerSocket createServerSocket(final int port, final int acceptCount) {
@@ -42,16 +70,15 @@ public class Connector implements Runnable {
     }
 
     public void start() {
-        var thread = new Thread(this);
+        final var thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
         stopped = false;
-        log.info("Web Application Server started {} port.", serverSocket.getLocalPort());
+        log.info(SERVER_START_MESSAGE, serverSocket.getLocalPort());
     }
 
     @Override
     public void run() {
-        // 클라이언트가 연결될때까지 대기한다.
         while (!stopped) {
             connect();
         }
@@ -60,7 +87,7 @@ public class Connector implements Runnable {
     private void connect() {
         try {
             process(serverSocket.accept());
-        } catch (IOException e) {
+        } catch (final IOException e) {
             log.error(e.getMessage(), e);
         }
     }
@@ -69,23 +96,36 @@ public class Connector implements Runnable {
         if (connection == null) {
             return;
         }
-        var processor = new Http11Processor(connection, handlerMapper);
-        new Thread(processor).start();
+        final var processor = new Http11Processor(connection, controllerMapper);
+        executorService.execute(processor);
     }
 
     public void stop() {
         stopped = true;
         try {
             serverSocket.close();
-        } catch (IOException e) {
+            shutdown();
+        } catch (final IOException e) {
             log.error(e.getMessage(), e);
         }
     }
 
-    private int checkPort(final int port) {
-        final var MIN_PORT = 1;
-        final var MAX_PORT = 65535;
+    private void shutdown () {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(TASK_AWAIT_TIME, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+                if (!executorService.awaitTermination(TASK_AWAIT_TIME, TimeUnit.SECONDS)) {
+                    log.error("Pool did not terminate");
+                }
+            }
+        } catch (final InterruptedException e) {
+            executorService.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
+    private int checkPort(final int port) {
         if (port < MIN_PORT || MAX_PORT < port) {
             return DEFAULT_PORT;
         }

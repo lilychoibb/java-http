@@ -4,29 +4,31 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import nextstep.jwp.exception.UncheckedServletException;
+import org.apache.catalina.controller.Controller;
+import org.apache.catalina.controller.ControllerMapper;
 import org.apache.coyote.Processor;
-import org.apache.coyote.http11.handler.HandlerMapper;
 import org.apache.coyote.http11.message.request.Request;
+import org.apache.coyote.http11.message.response.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Http11Processor implements Runnable, Processor {
 
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
+    private static final String PROCESS_MESSAGE = "connect host: {}, port: {}";
 
     private final Socket connection;
 
-    private final HandlerMapper handlerMapper;
+    private final ControllerMapper controllerMapper;
 
-    public Http11Processor(final Socket connection, final HandlerMapper handlerMapper) {
+    public Http11Processor(final Socket connection, final ControllerMapper controllerMapper) {
         this.connection = connection;
-        this.handlerMapper = handlerMapper;
+        this.controllerMapper = controllerMapper;
     }
 
     @Override
     public void run() {
-        log.info("connect host: {}, port: {}", connection.getInetAddress(), connection.getPort());
+        log.info(PROCESS_MESSAGE, connection.getInetAddress(), connection.getPort());
         process(connection);
     }
 
@@ -39,12 +41,17 @@ public class Http11Processor implements Runnable, Processor {
             final String response = createResponse(request);
             outputStream.write(response.getBytes());
             outputStream.flush();
-        } catch (final IOException | UncheckedServletException e) {
+        } catch (final IOException e) {
             log.error(e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private String createResponse(final Request request) {
-        return handlerMapper.handle(request).getResponse();
+    private String createResponse(final Request request) throws Exception {
+        final Controller controller = controllerMapper.findHandler(request.getRequestLine());
+        final Response response = Response.DEFAULT;
+        controller.service(request, response);
+        return response.getResponse();
     }
 }
