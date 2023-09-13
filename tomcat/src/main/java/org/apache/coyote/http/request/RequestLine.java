@@ -6,7 +6,6 @@ public class RequestLine {
 
     private final HttpMethod httpMethod;
     private final RequestUri requestUri;
-
     private final Protocol protocol;
 
     public RequestLine(final HttpMethod httpMethod, final RequestUri requestUri, final Protocol protocol) {
@@ -19,6 +18,10 @@ public class RequestLine {
         return httpMethod;
     }
 
+    public boolean isSameRequestMethod(final HttpMethod httpMethod) {
+        return this.httpMethod == httpMethod;
+    }
+
     public boolean isPostMethod() {
         return httpMethod == HttpMethod.POST;
     }
@@ -29,6 +32,18 @@ public class RequestLine {
 
     public boolean containsRequestUri(final String uri) {
         return requestUri.contains(uri);
+    }
+
+    public boolean isEndsWithRequestUri(final String uri) {
+        return requestUri.endsWith(uri);
+    }
+
+    public QueryString getQueryString() {
+        return requestUri.getQueryString();
+    }
+
+    public Protocol getProtocol() {
+        return protocol;
     }
 
     public RequestUri getRequestUri() {

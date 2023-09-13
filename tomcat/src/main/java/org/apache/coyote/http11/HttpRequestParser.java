@@ -11,15 +11,14 @@ import org.apache.coyote.http.request.RequestUri;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.EnumMap;
 
 import static org.apache.coyote.http.common.HttpHeader.CONTENT_LENGTH;
 import static org.apache.coyote.http.request.HttpMethod.POST;
 
 public class HttpRequestParser {
 
-    public static final String SPACE = " ";
+    private static final String SPACE = " ";
 
     public HttpRequestParser() {
     }
@@ -47,7 +46,7 @@ public class HttpRequestParser {
     }
 
     private HttpHeaders parseHeader(final BufferedReader bufferedReader) throws IOException {
-        final Map<HttpHeader, String> headers = new HashMap<>();
+        final EnumMap<HttpHeader, String> headers = new EnumMap<>(HttpHeader.class);
         String header = bufferedReader.readLine();
         while (!"".equals(header)) {
             final String[] parsedHeader = header.split(": ");

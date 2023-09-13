@@ -18,16 +18,20 @@ public class HttpRequest {
         this.httpBody = httpBody;
     }
 
-    public boolean isPostRequest() {
-        return requestLine.isPostMethod();
-    }
-
-    public boolean isGetRequest() {
-        return requestLine.isGetMethod();
+    public boolean isSameRequestMethod(final HttpMethod httpMethod) {
+        return requestLine.isSameRequestMethod(httpMethod);
     }
 
     public boolean containsRequestUri(final String uri) {
         return requestLine.containsRequestUri(uri);
+    }
+
+    public boolean hasQueryString() {
+        return requestLine.containsRequestUri("?");
+    }
+
+    public boolean isEndsWithRequestUri(final String uri) {
+        return requestLine.isEndsWithRequestUri(uri);
     }
 
     public boolean containsHeader(final HttpHeader headerName) {
@@ -38,11 +42,27 @@ public class HttpRequest {
         return headers.get(httpHeader);
     }
 
+    public QueryString getQueryString() {
+        return requestLine.getQueryString();
+    }
+
     public Map<String, String> getParsedBody() {
         return httpBody.parseBodyParameters();
     }
 
     public RequestUri getRequestUri() {
         return requestLine.getRequestUri();
+    }
+
+    public RequestLine getRequestLine() {
+        return requestLine;
+    }
+
+    public HttpHeaders getHeaders() {
+        return headers;
+    }
+
+    public HttpBody getHttpBody() {
+        return httpBody;
     }
 }

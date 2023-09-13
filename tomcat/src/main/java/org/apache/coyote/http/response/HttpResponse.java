@@ -4,35 +4,39 @@ import org.apache.coyote.http.common.HttpBody;
 import org.apache.coyote.http.common.HttpHeader;
 import org.apache.coyote.http.common.HttpHeaders;
 
-import java.util.Map;
+import java.util.EnumMap;
 
 public class HttpResponse {
 
-    public static final String SPACE = " ";
-    public static final String HEADER_DELIMETER = ": ";
-    public static final String CRLF = "\r\n";
-    public static final String BLANK_LINE = "";
+    private static final String SPACE = " ";
+    private static final String HEADER_DELIMETER = ": ";
+    private static final String CRLF = "\r\n";
+    private static final String BLANK_LINE = "";
 
-    private final StatusLine statusLine;
-    private final HttpHeaders httpHeaders;
-    private final HttpBody body;
+    private StatusLine statusLine;
+    private HttpHeaders httpHeaders;
+    private HttpBody body;
 
-    HttpResponse(final StatusLine statusLine, final HttpHeaders httpHeaders, final HttpBody body) {
+    public void mapToRedirect(final String redirectUri) {
+        changeStatusLine(StatusLine.from(StatusCode.FOUND));
+        addHeader(HttpHeader.LOCATION, redirectUri);
+        changeBody(HttpBody.empty());
+    }
+
+    public void changeStatusLine(final StatusLine statusLine) {
         this.statusLine = statusLine;
-        this.httpHeaders = httpHeaders;
+    }
+
+    public void addHeader(final HttpHeader httpHeader, final String value) {
+        if (httpHeaders == null) {
+            this.httpHeaders = new HttpHeaders(new EnumMap<>(HttpHeader.class));
+        }
+
+        this.httpHeaders.add(httpHeader, value);
+    }
+
+    public void changeBody(final HttpBody body) {
         this.body = body;
-    }
-
-    public static HttpResponse redirect(final String redirectUri) {
-        return HttpResponse.builder()
-                .statusLine(StatusLine.from(StatusCode.FOUND))
-                .httpHeaders(new HttpHeaders(Map.of(HttpHeader.LOCATION, redirectUri)))
-                .body(HttpBody.empty())
-                .build();
-    }
-
-    public static HttpResponseBuilder builder() {
-        return new HttpResponseBuilder();
     }
 
     public String serialize() {
@@ -48,7 +52,8 @@ public class HttpResponse {
         response.append(HttpHeader.CONTENT_LENGTH.getValue())
                 .append(HEADER_DELIMETER)
                 .append(body.getValue().getBytes().length)
-                .append(SPACE).append(CRLF);
+                .append(SPACE)
+                .append(CRLF);
 
         serializeBody(response);
         return response.toString();
@@ -61,12 +66,7 @@ public class HttpResponse {
     }
 
     private void serializeHeaders(final StringBuilder response) {
-        httpHeaders.getHeaders().forEach((key, value) -> response.append(key.getValue())
-                .append(HEADER_DELIMETER)
-                .append(value)
-                .append(SPACE)
-                .append(CRLF)
-        );
+        httpHeaders.getHeaders().forEach((key, value) -> response.append(key.getValue()).append(HEADER_DELIMETER).append(value).append(SPACE).append(CRLF));
     }
 
     private void serializeBody(final StringBuilder response) {

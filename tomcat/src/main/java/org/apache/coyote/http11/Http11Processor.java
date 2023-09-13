@@ -1,15 +1,13 @@
 package org.apache.coyote.http11;
 
-import nextstep.jwp.exception.UncheckedServletException;
 import org.apache.coyote.Processor;
-import org.apache.coyote.handler.FrontHandler;
+import org.apache.coyote.controller.RequestHandler;
 import org.apache.coyote.http.request.HttpRequest;
 import org.apache.coyote.http.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
@@ -18,12 +16,12 @@ public class Http11Processor implements Runnable, Processor {
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
 
     private final Socket connection;
-    private final FrontHandler frontHandler;
+    private final RequestHandler requestHandler;
     private final HttpRequestParser httpRequestParser;
 
-    public Http11Processor(final Socket connection) {
+    public Http11Processor(final Socket connection, final RequestHandler requestHandler) {
         this.connection = connection;
-        this.frontHandler = new FrontHandler();
+        this.requestHandler = requestHandler;
         this.httpRequestParser = new HttpRequestParser();
     }
 
@@ -37,18 +35,19 @@ public class Http11Processor implements Runnable, Processor {
     public void process(final Socket connection) {
         try (final var inputStream = connection.getInputStream();
              final var outputStream = connection.getOutputStream();
-             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))
         ) {
             final HttpRequest httpRequest = httpRequestParser.parseHttpRequest(bufferedReader);
             if (httpRequest == null) {
                 return;
             }
 
-            final HttpResponse response = frontHandler.handle(httpRequest);
+            final HttpResponse httpResponse = new HttpResponse();
+            requestHandler.handle(httpRequest, httpResponse);
 
-            outputStream.write(response.serialize().getBytes());
+            outputStream.write(httpResponse.serialize().getBytes());
             outputStream.flush();
-        } catch (IOException | UncheckedServletException e) {
+        } catch (final Exception e) {
             log.error(e.getMessage(), e);
         }
     }

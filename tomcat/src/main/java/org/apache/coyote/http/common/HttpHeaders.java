@@ -22,6 +22,10 @@ public class HttpHeaders {
         return headers.containsKey(headerName);
     }
 
+    public void add(final HttpHeader key, final String value) {
+        headers.put(key, value);
+    }
+
     public void add(final HttpHeaders httpHeaders) {
         headers.putAll(httpHeaders.getHeaders());
     }
