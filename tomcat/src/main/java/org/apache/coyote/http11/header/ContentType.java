@@ -1,7 +1,7 @@
-package org.apache.coyote.http11;
+package org.apache.coyote.http11.header;
 
 public enum ContentType {
-    HTML("text/html"),
+    HTML("text/html;charset=utf-8"),
     CSS("text/css"),
     JS("application/javascript"),
     FORM_URLENCODED("application/x-www-form-urlencoded"),
@@ -9,7 +9,8 @@ public enum ContentType {
     SVG("image/svg+xml"),
     PNG("image/png"),
     WOFF("font/woff"),
-    WOFF2("font/woff2");
+    WOFF2("font/woff2"),
+    NONE("");
 
     private final String type;
 
