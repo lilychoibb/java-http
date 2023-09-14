@@ -1,24 +1,28 @@
 package org.apache.coyote.http11.request;
 
+import org.apache.coyote.http11.common.HttpHeaders;
+import org.apache.coyote.http11.common.HttpMethod;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class HttpRequest {
-    private final HttpRequestStartLine startLine;
+    private final HttpRequestLine requestLine;
     private final HttpRequestHeaders headers;
     private final HttpRequestBody body;
 
-    private HttpRequest(final HttpRequestStartLine startLine, final HttpRequestHeaders headers, final HttpRequestBody body) {
-        this.startLine = startLine;
+    private HttpRequest(final HttpRequestLine requestLine, final HttpRequestHeaders headers, final HttpRequestBody body) {
+        this.requestLine = requestLine;
         this.headers = headers;
         this.body = body;
     }
 
     public static HttpRequest from(final BufferedReader bufferedReader) throws IOException {
         final List<String> requestHeader = extractRequestHeader(bufferedReader);
-        final HttpRequestStartLine startLine = HttpRequestStartLine.from(requestHeader.get(0));
+        final HttpRequestLine startLine = HttpRequestLine.from(requestHeader.get(0));
         final HttpRequestHeaders headers = HttpRequestHeaders.from(requestHeader.subList(1, requestHeader.size()));
         final HttpRequestBody requestBody = extractRequestBody(bufferedReader, headers);
         return new HttpRequest(startLine, headers, requestBody);
@@ -35,8 +39,8 @@ public class HttpRequest {
     }
 
     private static HttpRequestBody extractRequestBody(final BufferedReader bufferedReader, final HttpRequestHeaders requestHeader) throws IOException {
-        final String contentLength = requestHeader.get("Content-Length");
-        if (contentLength == null) {
+        final String contentLength = requestHeader.get(HttpHeaders.CONTENT_LENGTH.getMessage());
+        if (contentLength.isBlank()) {
             return HttpRequestBody.empty();
         }
         final int length = Integer.parseInt(contentLength);
@@ -49,15 +53,19 @@ public class HttpRequest {
         return headers.hasCookie();
     }
 
-    public HttpRequestStartLine getStartLine() {
-        return startLine;
-    }
-
-    public String getBody() {
+    public Map<String, String> getBody() {
         return body.getBody();
     }
 
     public String getCookie() {
-        return headers.get("Cookie");
+        return headers.get(HttpHeaders.COOKIE.getMessage());
+    }
+
+    public HttpMethod getMethod() {
+        return requestLine.getMethod();
+    }
+
+    public String getPathValue() {
+        return requestLine.getPathValue();
     }
 }
