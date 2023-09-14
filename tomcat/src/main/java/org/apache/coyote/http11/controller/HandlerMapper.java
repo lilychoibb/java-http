@@ -2,46 +2,26 @@ package org.apache.coyote.http11.controller;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
-import java.util.StringJoiner;
-import java.util.stream.Collectors;
-import org.apache.coyote.http11.ResourceProvider;
-import org.apache.coyote.http11.request.HttpMethod;
 import org.apache.coyote.http11.request.HttpRequest;
 import org.apache.coyote.http11.response.HttpResponse;
-import org.apache.coyote.http11.response.HttpStatusCode;
 import org.apache.coyote.http11.service.LoginService;
 
 public class HandlerMapper {
 
     private final Map<Mapper, Controller> controllerByMapper = new HashMap<>();
-    private final ResourceProvider resourceProvider;
 
-    public HandlerMapper(ResourceProvider resourceProvider) {
+    public HandlerMapper() {
         enrollHandler();
-        this.resourceProvider = resourceProvider;
     }
 
     private void enrollHandler() {
         controllerByMapper.put(
-            request -> "/login".equals(request.getRequestLine().getPath()) &&
-                HttpMethod.POST.equals(request.getRequestLine().getMethod()),
+            request -> "/login".equals(request.getRequestLine().getPath()),
             new LoginController(new LoginService()));
 
         controllerByMapper.put(
-            request -> "/register".equals(request.getRequestLine().getPath()) &&
-                HttpMethod.POST.equals(request.getRequestLine().getMethod()),
+            request -> "/register".equals(request.getRequestLine().getPath()),
             new SignUpController(new LoginService()));
-
-        controllerByMapper.put(
-            request -> "/login".equals(request.getRequestLine().getPath()) &&
-                HttpMethod.GET.equals(request.getRequestLine().getMethod()),
-            new LoginViewController());
-
-        controllerByMapper.put(
-            request -> "/register".equals(request.getRequestLine().getPath()) &&
-                HttpMethod.GET.equals(request.getRequestLine().getMethod()),
-            new SignUpViewController());
     }
 
     public boolean haveAvailableHandler(HttpRequest httpRequest) {
@@ -57,65 +37,9 @@ public class HandlerMapper {
         return controllerByMapper.get(mapper);
     }
 
-    public String controllerResponse(HttpRequest httpRequest) {
+    public void process(HttpRequest httpRequest, HttpResponse httpResponse) {
         Controller handler = getHandler(httpRequest);
-        HttpResponse<Object> httpResponse = (HttpResponse<Object>) handler.handle(httpRequest);
-        return makeResponse(httpResponse);
-    }
-
-    private String makeResponse(HttpResponse<Object> httpResponse) {
-        StringBuilder response = new StringBuilder();
-        response.append(requestLine(httpResponse));
-        Optional<String> body = bodyOf(httpResponse);
-        if (body.isPresent()) {
-            return response.append(responseWithBody(httpResponse, body.get())).toString();
-        }
-        String str = responseWithoutBody(httpResponse);
-        response.append("\r\n");
-        return response.append(str).toString();
-    }
-
-
-    private String requestLine(HttpResponse<Object> httpResponse) {
-        HttpStatusCode httpStatusCode = HttpStatusCode.of(httpResponse.getStatusCode());
-        return "HTTP/1.1 " + httpStatusCode.getStatusCode() + " " + httpStatusCode.name() + " ";
-    }
-
-    private Optional<String> bodyOf(HttpResponse<Object> httpResponse) {
-        if (httpResponse.isViewResponse()) {
-            return Optional.of(resourceProvider.resourceBodyOf(httpResponse.getViewPath()));
-        }
-        return Optional.empty();
-    }
-
-    private String responseWithBody(HttpResponse<Object> httpResponse, String body) {
-        Map<String, String> headers = httpResponse.getHeaders();
-        StringJoiner stringJoiner = new StringJoiner("\r\n");
-        stringJoiner.add(headerResponse(headers));
-        stringJoiner.add(resourceProvider.contentTypeOf(httpResponse.getViewPath()));
-        stringJoiner.add("Content-Length: " + body.getBytes().length + " ");
-        stringJoiner.add("");
-        stringJoiner.add(body);
-        return stringJoiner.toString();
-    }
-
-    private String responseWithoutBody(HttpResponse<Object> httpResponse) {
-        Map<String, String> headers = httpResponse.getHeaders();
-        StringJoiner stringJoiner = new StringJoiner("\r\n");
-        stringJoiner.add(headerResponse(headers));
-        stringJoiner.add("");
-        return stringJoiner.toString();
-    }
-
-    private String headerResponse(Map<String, String> headers) {
-        return headers.keySet()
-            .stream()
-            .map(headerName -> makeHeader(headerName, headers.get(headerName)))
-            .collect(Collectors.joining("\r\n"));
-    }
-
-    private String makeHeader(String headerName, String value) {
-        return headerName + ": " + value;
+        handler.service(httpRequest, httpResponse);
     }
 
     @FunctionalInterface

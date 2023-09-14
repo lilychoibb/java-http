@@ -5,15 +5,17 @@ import org.apache.coyote.http11.controller.util.BodyExtractor;
 import org.apache.coyote.http11.exception.MemberAlreadyExistsException;
 import org.apache.coyote.http11.request.HttpRequest;
 import org.apache.coyote.http11.response.HttpResponse;
+import org.apache.coyote.http11.response.ResponseEntity;
 import org.apache.coyote.http11.service.LoginService;
 import org.apache.coyote.http11.session.SessionManager;
 
-public class SignUpController implements Controller {
+public class SignUpController extends AbstractController {
 
     private static final String ACCOUNT = "account";
     private static final String PASSWORD = "password";
     private static final String EMAIL = "email";
-    private static final String LOCATION_HEADER = "Location";
+    private static final String INDEX_PAGE = "/index.html";
+    public static final String REGISTER_PAGE = "/register.html";
 
     private final LoginService loginService;
 
@@ -22,22 +24,30 @@ public class SignUpController implements Controller {
     }
 
     @Override
-    public HttpResponse handle(HttpRequest httpRequest) {
+    protected void doGet(HttpRequest httpRequest, HttpResponse httpResponse) {
+        if (SessionManager.loggedIn(httpRequest)) {
+            httpResponse.responseFrom(ResponseEntity.redirect(INDEX_PAGE));
+            return;
+        }
+        ResponseEntity<Object> responseEntity = ResponseEntity.status(200).build();
+        responseEntity.responseView(REGISTER_PAGE);
+        httpResponse.responseFrom(responseEntity);
+    }
+
+    @Override
+    protected void doPost(HttpRequest httpRequest, HttpResponse httpResponse) {
         try {
             if (SessionManager.loggedIn(httpRequest)) {
-                return HttpResponse.status(302)
-                    .addHeader(LOCATION_HEADER, "/index.html")
-                    .build();
+                httpResponse.responseFrom(ResponseEntity.redirect(INDEX_PAGE));
+                return;
             }
             String loginSession = signUp(httpRequest);
-            return HttpResponse.status(302)
-                .addHeader(LOCATION_HEADER, "/index.html")
-                .addHeader("Set-Cookie", "JSESSIONID" + "=" + loginSession)
-                .build();
+            httpResponse.responseFrom(ResponseEntity.status(302)
+                .location(INDEX_PAGE)
+                .sessionCookie(loginSession)
+                .build());
         } catch (MemberAlreadyExistsException e) {
-            return HttpResponse.status(302)
-                .addHeader(LOCATION_HEADER, "/register.html")
-                .build();
+            httpResponse.responseFrom(ResponseEntity.redirect(REGISTER_PAGE));
         }
     }
 
