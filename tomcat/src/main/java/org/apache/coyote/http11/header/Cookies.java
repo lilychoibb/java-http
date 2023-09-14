@@ -1,7 +1,9 @@
 package org.apache.coyote.http11.header;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Cookies {
@@ -10,6 +12,10 @@ public class Cookies {
     private static final String VALUE_SEPARATOR = "=";
 
     private final Map<String, String> cookies;
+
+    public Cookies() {
+        this(new HashMap<>());
+    }
 
     private Cookies(Map<String, String> cookies) {
         this.cookies = cookies;
@@ -29,8 +35,8 @@ public class Cookies {
         cookies.put(key, value);
     }
 
-    public String get(String key) {
-        return cookies.get(key);
+    public Optional<String> get(String key) {
+        return Optional.ofNullable(cookies.get(key));
     }
 
     public HttpHeader toHeader(String name) {

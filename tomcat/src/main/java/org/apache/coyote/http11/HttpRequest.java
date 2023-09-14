@@ -1,36 +1,31 @@
 package org.apache.coyote.http11;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.util.List;
 import org.apache.coyote.http11.header.Cookies;
 import org.apache.coyote.http11.header.Headers;
 import org.apache.coyote.http11.header.HttpHeader;
+import org.apache.coyote.http11.session.Session;
+import org.apache.coyote.http11.session.SessionManager;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 
 public class HttpRequest {
 
-    private static final String WHITE_SPACE = " ";
-
-    private final HttpMethod method;
-    private final HttpTarget target;
-    private final String version;
+    private final RequestLine requestLine;
     private final Headers headers;
     private final String body;
 
-    private HttpRequest(final String method, final String target, final String version,
-                        final Headers headers,
-                        final String body) {
-        this.method = new HttpMethod(method);
-        this.target = new HttpTarget(target);
-        this.version = version;
+    public HttpRequest(final RequestLine requestLine, final Headers headers, final String body) {
+        this.requestLine = requestLine;
         this.headers = headers;
         this.body = body;
     }
 
     public static HttpRequest from(BufferedReader reader) {
         try {
-            String[] requestLineElements = reader.readLine().split(WHITE_SPACE);
-
+            RequestLine requestLine = new RequestLine(reader.readLine());
             Headers headers = new Headers();
             String next;
             while (reader.ready() && !(next = reader.readLine()).isEmpty()) {
@@ -45,9 +40,7 @@ public class HttpRequest {
             }
 
             return new HttpRequest(
-                    requestLineElements[0],
-                    requestLineElements[1],
-                    requestLineElements[2],
+                    requestLine,
                     headers,
                     new String(bodyBuffer)
             );
@@ -58,15 +51,15 @@ public class HttpRequest {
 
 
     public HttpMethod getMethod() {
-        return method;
+        return requestLine.getMethod();
     }
 
     public HttpTarget getTarget() {
-        return target;
+        return requestLine.getTarget();
     }
 
     public String getVersion() {
-        return version;
+        return requestLine.getHttpVersion();
     }
 
     public List<HttpHeader> getHeaders() {
@@ -74,7 +67,13 @@ public class HttpRequest {
     }
 
     public Cookies getCookies() {
-        return Cookies.from(getHeader("Cookie"));
+        HttpHeader cookieHeader = headers.get("Cookie");
+        return Cookies.from(cookieHeader);
+    }
+
+    public Optional<Session> getSession(String sessionKey) {
+        return getCookies().get(sessionKey)
+                .flatMap(SessionManager::findSession);
     }
 
     public HttpHeader getHeader(String name) {

@@ -1,38 +1,31 @@
 package org.apache.coyote.http11;
 
+import nextstep.jwp.exception.UncheckedServletException;
+import nextstep.jwp.handler.HelloController;
+import nextstep.jwp.handler.LoginController;
+import nextstep.jwp.handler.RegisterController;
+import org.apache.coyote.Processor;
+import org.apache.coyote.http11.controller.FileController;
+import org.apache.coyote.http11.controller.RequestMapping;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.util.Map;
-import java.util.stream.Collectors;
-import nextstep.jwp.exception.UncheckedServletException;
-import nextstep.jwp.handler.LoginHandler;
-import nextstep.jwp.handler.RegisterHandler;
-import org.apache.coyote.Processor;
-import org.apache.coyote.http11.handler.FileHandler;
-import org.apache.coyote.http11.handler.Handler;
-import org.apache.coyote.http11.header.HttpHeader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Set;
 
 public class Http11Processor implements Runnable, Processor {
 
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
 
-    private static final String HTTP_VERSION = "HTTP/1.1 ";
-    private static final String CRLF = "\r\n";
-
-    private static final Handler DEFAULT_HANDLER = new FileHandler();
-    private static final LoginHandler LOGIN_HANDLER = new LoginHandler();
-    private static final RegisterHandler REGISTER_HANDLER = new RegisterHandler();
-    private static final Map<String, Handler> PREDEFINED_HANDLERS = Map.of(
-            "/", httpRequest -> new HttpResponse("Hello world!", "text/html"),
-            "/login", LOGIN_HANDLER,
-            "/login.html", LOGIN_HANDLER,
-            "/register", REGISTER_HANDLER,
-            "/register.html", REGISTER_HANDLER
-    );
+    private static final RequestMapping REQUEST_MAPPING = new RequestMapping(Set.of(
+            new HelloController(),
+            new LoginController(),
+            new FileController(),
+            new RegisterController()
+    ));
 
     private final Socket connection;
 
@@ -52,29 +45,13 @@ public class Http11Processor implements Runnable, Processor {
              final var outputStream = connection.getOutputStream()) {
 
             HttpRequest httpRequest = HttpRequest.from(bufferedReader);
-            HttpResponse httpResponse = handle(httpRequest);
+            HttpResponse httpResponse = new HttpResponse();
+            REQUEST_MAPPING.handle(httpRequest, httpResponse);
 
-            String headerLines = httpResponse.getHeaders().stream()
-                    .map(HttpHeader::toLine)
-                    .collect(Collectors.joining(CRLF));
-            final var response = String.join(CRLF,
-                    HTTP_VERSION + httpResponse.getStatus().toLine(),
-                    headerLines,
-                    "",
-                    httpResponse.getBody()
-            );
-
-            outputStream.write(response.getBytes());
+            outputStream.write(httpResponse.toLine().getBytes());
             outputStream.flush();
         } catch (IOException | UncheckedServletException e) {
             log.error(e.getMessage(), e);
         }
-    }
-
-    private HttpResponse handle(final HttpRequest httpRequest) {
-        if (PREDEFINED_HANDLERS.containsKey(httpRequest.getTarget().getPath())) {
-            return PREDEFINED_HANDLERS.get(httpRequest.getTarget().getPath()).handle(httpRequest);
-        }
-        return DEFAULT_HANDLER.handle(httpRequest);
     }
 }

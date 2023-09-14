@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class Headers {
+
+    private static final String CRLF = "\r\n";
 
     private final Map<String, HttpHeader> headers;
 
@@ -17,7 +20,7 @@ public class Headers {
         add(new HttpHeader(rawHeader));
     }
 
-    private void add(HttpHeader header) {
+    public void add(HttpHeader header) {
         headers.put(header.getName(), header);
     }
 
@@ -26,14 +29,20 @@ public class Headers {
     }
 
     public int getContentLength() {
-        HttpHeader contentLength = get("Content-Length");
-        if (contentLength.isEmpty()) {
+        HttpHeader contentLengthHeader = get("Content-Length");
+        if (contentLengthHeader.isEmpty()) {
             return 0;
         }
-        return Integer.parseInt(contentLength.getValue());
+        return Integer.parseInt(contentLengthHeader.getValue());
     }
 
     public List<HttpHeader> getHeaders() {
         return new ArrayList<>(headers.values());
+    }
+
+    public String toLine() {
+        return headers.values().stream()
+                .map(HttpHeader::toLine)
+                .collect(Collectors.joining(CRLF));
     }
 }
