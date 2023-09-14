@@ -1,16 +1,18 @@
-package org.apache.coyote.http11.session;
+package org.apache.catalina.session;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class Session {
+public class HttpSession {
 
     private final String id;
-    private final Map<String, Object> values = new HashMap<>();
+    private final Map<String, Object> values;
 
-    public Session() {
+    public HttpSession(final String name, final Object value) {
         this.id = UUID.randomUUID().toString();
+        values = new ConcurrentHashMap<>();
+        addAttribute(name, value);
     }
 
     public String getId() {
