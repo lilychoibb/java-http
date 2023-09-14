@@ -1,5 +1,6 @@
 package nextstep.org.apache.coyote.http11;
 
+import org.apache.catalina.servlets.config.ServletMapping;
 import support.StubSocket;
 import org.apache.coyote.http11.Http11Processor;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ class Http11ProcessorTest {
     @Test
     void process() {
         // given
+        ServletMapping.initialize();
         final var socket = new StubSocket();
         final var processor = new Http11Processor(socket);
 
