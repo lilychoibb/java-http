@@ -1,10 +1,12 @@
 package org.apache.coyote.http11.response;
 
 public class ResponseBody {
-    private final String content;
+    public static final ResponseBody EMPTY = new ResponseBody(new byte[]{}, ContentType.EMPTY);
+
+    private final byte[] content;
     private final ContentType contentType;
 
-    private ResponseBody(final String content, final ContentType contentType) {
+    private ResponseBody(final byte[] content, final ContentType contentType) {
         this.content = content;
         this.contentType = contentType;
     }
@@ -16,12 +18,12 @@ public class ResponseBody {
         );
     }
 
-    public static ResponseBody noContent(final ContentType contentType) {
-        return new ResponseBody("Hello world!", contentType);
+    public byte[] getContent() {
+        return content;
     }
 
-    public String getContent() {
-        return content;
+    public int getLength() {
+        return content.length;
     }
 
     public ContentType getContentType() {

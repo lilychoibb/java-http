@@ -2,8 +2,9 @@ package org.apache.coyote.http11;
 
 import nextstep.jwp.exception.UncheckedServletException;
 import org.apache.coyote.Processor;
-import org.apache.coyote.http11.request.Request;
-import org.apache.coyote.http11.response.Response;
+import org.apache.coyote.http11.controller.Controller;
+import org.apache.coyote.http11.request.HttpRequest;
+import org.apache.coyote.http11.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,11 +17,11 @@ public class Http11Processor implements Runnable, Processor {
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
 
     private final Socket connection;
-    private final Handler handler;
+    private final RequestMapping requestMapping;
 
-    public Http11Processor(final Socket connection, final Handler handler) {
+    public Http11Processor(final Socket connection, final RequestMapping requestMapping) {
         this.connection = connection;
-        this.handler = handler;
+        this.requestMapping = requestMapping;
     }
 
     @Override
@@ -34,14 +35,18 @@ public class Http11Processor implements Runnable, Processor {
         try (final var outputStream = connection.getOutputStream();
              final var bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
 
-            final Request request = Request.from(bufferedReader);
-            final Response response = handler.handle(request);
+            final HttpRequest httpRequest = HttpRequest.from(bufferedReader);
+            final Controller controller = requestMapping.getController(httpRequest);
+            final HttpResponse response = HttpResponse.create();
+            controller.service(httpRequest, response);
             final String result = response.toString();
 
             outputStream.write(result.getBytes());
             outputStream.flush();
         } catch (IOException | UncheckedServletException e) {
-            log.error(e.getMessage(), e);
+            log.error("", e);
+        } catch (Exception e) {
+            log.error("예상치 못한 오류 : ", e);
         }
     }
 }

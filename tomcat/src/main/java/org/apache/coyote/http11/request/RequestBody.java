@@ -5,23 +5,24 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.StringTokenizer;
 
 public class RequestBody {
     public static final RequestBody EMPTY = new RequestBody(Collections.emptyMap());
 
-    private final Map<String, String> requestBody;
+    private final Map<String, String> content;
 
-    private RequestBody(final Map<String, String> requestBody) {
-        this.requestBody = requestBody;
+    private RequestBody(final Map<String, String> content) {
+        this.content = content;
     }
 
-    public static RequestBody of(final RequestHeader requestHeader, final BufferedReader bufferedReader) throws IOException {
-        if (!requestHeader.containsKey("Content-Length")) {
-            return EMPTY;
+    public static Optional<RequestBody> of(final RequestHeaders requestHeaders, final BufferedReader bufferedReader) throws IOException {
+        if (!requestHeaders.containsKey("Content-Length")) {
+            return Optional.empty();
         }
         final Map<String, String> result = new HashMap<>();
-        final int contentLength = Integer.parseInt(requestHeader.getHeaderValue("Content-Length"));
+        final int contentLength = Integer.parseInt(requestHeaders.getHeaderValue("Content-Length"));
         if (contentLength > 0) {
             char[] buffer = new char[contentLength];
             bufferedReader.read(buffer, 0, contentLength);
@@ -33,13 +34,13 @@ public class RequestBody {
                 final String[] split = param.split("=");
                 result.put(split[0], split[1]);
             }
-            return new RequestBody(result);
+            return Optional.of(new RequestBody(result));
         }
 
-        return EMPTY;
+        return Optional.empty();
     }
 
     public String getParamValue(final String key) {
-        return requestBody.get(key);
+        return content.get(key);
     }
 }

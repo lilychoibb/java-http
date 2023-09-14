@@ -7,7 +7,7 @@ public enum ContentType {
     CSS("css", "text/css"),
     JS("js", "application/js"),
     ICO("ico", "image/vnd.microsoft.icon"),
-    SVG("svg", "image/svg+xml");
+    EMPTY("", "");
 
     private final String fileExtension;
     private final String type;
