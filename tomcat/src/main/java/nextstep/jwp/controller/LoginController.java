@@ -1,4 +1,4 @@
-package org.apache.coyote.handler;
+package nextstep.jwp.controller;
 
 import nextstep.jwp.db.InMemoryUserRepository;
 import nextstep.jwp.model.User;
@@ -12,7 +12,7 @@ import org.apache.coyote.http11.response.Http11Response;
 
 import java.util.Optional;
 
-public class LoginHandler extends RequestHandler {
+public class LoginController extends AbstractController {
     private static final SessionManager sessionManager = SessionManager.getInstance();
     private static final String ACCOUNT = "account";
     private static final String PASSWORD = "password";
@@ -20,27 +20,8 @@ public class LoginHandler extends RequestHandler {
     private static final String LOGIN_PAGE = "/login.html";
     private static final String SESSION_KEY = "JSESSIONID";
 
-    public LoginHandler(String mappingUri) {
-        this.mappingUri = mappingUri;
-    }
-
     @Override
-    public Http11Response doService(final HttpRequest httpRequest) {
-        final String httpMethod = httpRequest.getRequestLine().getHttpMethod();
-
-        if (httpMethod.equals("GET")) {
-            return doGet(httpRequest);
-        }
-
-        if (httpMethod.equals("POST")) {
-            return doPost(httpRequest);
-        }
-
-        return redirectUnAuthorizedPage();
-    }
-
-    @Override
-    public Http11Response doPost(final HttpRequest httpRequest) {
+    public void doPost(final HttpRequest httpRequest, final Http11Response httpResponse) {
         final RequestBody body = httpRequest.getRequestBody();
 
         final String account = body.getByKey(ACCOUNT);
@@ -52,18 +33,20 @@ public class LoginHandler extends RequestHandler {
             session.setAttribute("user", user.get());
             sessionManager.add(session);
 
-            return redirectIndexPageWithCookie(session);
+            redirectIndexPageWithCookie(session, httpResponse);
+            return;
         }
 
-        return redirectUnAuthorizedPage();
+        redirectUnAuthorizedPage(httpResponse);
     }
 
     @Override
-    public Http11Response doGet(final HttpRequest httpRequest) {
+    public void doGet(final HttpRequest httpRequest, final Http11Response httpResponse) {
         final RequestHeader header = httpRequest.getRequestHeader();
 
         if (header.getByKey(COOKIE_KEY) == null) {
-            return loginPage();
+            loginPage(httpResponse);
+            return;
         }
 
         final HttpCookie cookie = HttpCookie.from(header.getByKey(COOKIE_KEY));
@@ -71,28 +54,33 @@ public class LoginHandler extends RequestHandler {
         final Session session = findSessionById(jSessionId);
 
         if (session == null) {
-            return loginPage();
+            loginPage(httpResponse);
+            return;
         }
 
-        return redirectIndexPageWithCookie(session);
+        redirectIndexPageWithCookie(session, httpResponse);
     }
 
-    private Http11Response redirectIndexPageWithCookie(final Session session) {
+    private void redirectIndexPageWithCookie(final Session session, final Http11Response httpResponse) {
         final String resourcePath = RESOURCE_PATH + INDEX_PAGE;
-
-        final Http11Response http11Response = new Http11Response(classLoader.getResource(resourcePath), 302, HTTP_FOUND);
-        http11Response.addCookie(SESSION_KEY, session.getId());
-        return http11Response;
+        httpResponse.addCookie(SESSION_KEY, session.getId());
+        httpResponse.setResource(classLoader.getResource(resourcePath));
+        httpResponse.setHttpStatusCode(302);
+        httpResponse.setStatusMessage(HTTP_FOUND);
     }
 
-    private Http11Response redirectUnAuthorizedPage() {
+    private void redirectUnAuthorizedPage(final Http11Response httpResponse) {
         final String resourcePath = RESOURCE_PATH + UNAUTHORIZED_PAGE;
-        return new Http11Response(classLoader.getResource(resourcePath), 302, HTTP_FOUND);
+        httpResponse.setResource(classLoader.getResource(resourcePath));
+        httpResponse.setHttpStatusCode(302);
+        httpResponse.setStatusMessage(HTTP_FOUND);
     }
 
-    private Http11Response loginPage() {
+    private void loginPage(final Http11Response httpResponse) {
         final String resourcePath = RESOURCE_PATH + LOGIN_PAGE;
-        return new Http11Response(classLoader.getResource(resourcePath), 200, "OK");
+        httpResponse.setResource(classLoader.getResource(resourcePath));
+        httpResponse.setHttpStatusCode(200);
+        httpResponse.setStatusMessage("OK");
     }
 
     private Session findSessionById(final String jSessionId) {

@@ -11,11 +11,13 @@ import java.util.Map;
 public class Http11Response {
 
     private static final String HTTP_VERSION = "HTTP/1.1";
-    public static final String CRLF = "\r\n";
-    private final URL resource;
-    private final int httpStatusCode;
-    private final String statusMessage;
+    private static final String CRLF = "\r\n";
+    private static final String COOKIE_DELIMITER = "=";
+
     private final Map<String, String> cookieValues = new HashMap<>();
+    private URL resource;
+    private int httpStatusCode;
+    private String statusMessage;
 
     public Http11Response(URL resource, int httpStatusCode, String statusMessage) {
         this.resource = resource;
@@ -23,8 +25,53 @@ public class Http11Response {
         this.statusMessage = statusMessage;
     }
 
+    public Http11Response() {
+    }
+
     public void addCookie(final String key, final String value) {
         cookieValues.put(key, value);
+    }
+
+    private String buildResponse() throws IOException {
+        final File requestedResource = new File(getResource().getFile());
+        final String responseBody = buildResponseBody(requestedResource);
+
+        final StringBuilder sb = new StringBuilder();
+        sb.append(HTTP_VERSION + " " + httpStatusCode + " " + statusMessage + " ").append(CRLF)
+                .append("Content-Type: " + contentType(resource.getPath()) + ";charset=utf-8 ").append(CRLF)
+                .append("Content-Length: " + responseBody.getBytes().length + " ").append(CRLF)
+                .append(cookieResponse(cookieValues)).append(CRLF)
+                .append(responseBody);
+
+        return sb.toString();
+    }
+
+    private String buildResponseBody(File location) throws IOException {
+        String responseBody = "";
+
+        if (location.isDirectory()) {
+            responseBody = "Hello world!";
+        }
+
+        if (location.isFile()) {
+            responseBody = new String(Files.readAllBytes(location.toPath()));
+        }
+        return responseBody;
+    }
+
+    private String cookieResponse(Map<String, String> cookieValues) {
+        final StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, String> cookie : cookieValues.entrySet()) {
+            sb.append("Set-Cookie: ").append(cookie.getKey()).append(COOKIE_DELIMITER).append(cookie.getValue()).append(CRLF);
+        }
+        return sb.toString();
+    }
+
+    private String contentType(final String resourcePath) {
+        if (resourcePath.endsWith(".css")) {
+            return "text/css";
+        }
+        return "text/html";
     }
 
     public String getVersion() {
@@ -51,45 +98,15 @@ public class Http11Response {
         return buildResponse();
     }
 
-    private String buildResponse() throws IOException {
-        final File requestedResource = new File(getResource().getFile());
-        final String responseBody = buildResponseBody(requestedResource);
-
-        final StringBuilder sb = new StringBuilder();
-        sb.append(HTTP_VERSION + " " + httpStatusCode + " " + statusMessage + " ").append(CRLF)
-                .append("Content-Type: " + contentType(resource.getPath()) + ";charset=utf-8 ").append(CRLF)
-                .append("Content-Length: " + responseBody.getBytes().length + " ").append(CRLF)
-                .append(cookieResponse(cookieValues)).append("\r\n")
-                .append(responseBody);
-
-        return sb.toString();
+    public void setResource(URL resource) {
+        this.resource = resource;
     }
 
-    private String buildResponseBody(File location) throws IOException {
-        String responseBody = "";
-
-        if (location.isDirectory()) {
-            responseBody = "Hello world!";
-        }
-
-        if (location.isFile()) {
-            responseBody = new String(Files.readAllBytes(location.toPath()));
-        }
-        return responseBody;
+    public void setHttpStatusCode(int httpStatusCode) {
+        this.httpStatusCode = httpStatusCode;
     }
 
-    private String cookieResponse(Map<String, String> cookieValues) {
-        final StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, String> cookie : cookieValues.entrySet()) {
-            sb.append("Set-Cookie: ").append(cookie.getKey()).append("=").append(cookie.getValue()).append("\r\n");
-        }
-        return sb.toString();
-    }
-
-    private String contentType(final String resourcePath) {
-        if (resourcePath.endsWith(".css")) {
-            return "text/css";
-        }
-        return "text/html";
+    public void setStatusMessage(String statusMessage) {
+        this.statusMessage = statusMessage;
     }
 }
