@@ -12,10 +12,18 @@
 -[x] Cookie에 JSESSIONID 값 저장하기
 -[x] Session 구현하기
 
+## 3단계 - 리팩터링
+-[x] HttpRequest 클래스 구현
+-[x] HttpResponse 클래스 구현
+-[x] Controller 인터페이스 구현
+-[x] AbstractController 추상 클래스 구현
+-[x] RequestMapping 클래스 구현
+
 ### TODO
 -[x] 예외 처리
 -[x] 매직 넘버 정리
 -[x] 리팩터링(클래스 분리, 패키지 정리)
--[ ] 상태코드, http 메서드 종류 추가 
--[ ] 테스트 - 회원가입, 정적리소스
--[ ] 로깅
+-[x] 상태코드, http 메서드 종류 추가 
+-[x] 테스트 - 회원가입, 정적리소스
+-[x] 로깅
+-[X] 예외 처리

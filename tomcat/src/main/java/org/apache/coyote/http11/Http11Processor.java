@@ -1,8 +1,13 @@
 package org.apache.coyote.http11;
 
-import nextstep.jwp.exception.UncheckedServletException;
+import common.http.ControllerManager;
+import common.http.Request;
+import common.http.Response;
 import org.apache.coyote.Processor;
-import org.apache.coyote.http11.session.SessionManager;
+import org.apache.coyote.http11.controller.ExceptionController;
+import org.apache.coyote.http11.controller.StaticControllerManager;
+import org.apache.coyote.http11.request.HttpRequestParser;
+import org.apache.coyote.http11.response.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,12 +19,14 @@ import java.net.Socket;
 public class Http11Processor implements Runnable, Processor {
 
     private static final Logger log = LoggerFactory.getLogger(Http11Processor.class);
-    private static final SessionManager sessionManager = new SessionManager();
 
     private final Socket connection;
 
-    public Http11Processor(Socket connection) {
+    private ControllerManager controllerManager;
+
+    public Http11Processor(Socket connection, ControllerManager controllerManager) {
         this.connection = connection;
+        this.controllerManager = controllerManager;
     }
 
     @Override
@@ -34,14 +41,37 @@ public class Http11Processor implements Runnable, Processor {
              final var outputStream = connection.getOutputStream();
              final var reader = new BufferedReader(new InputStreamReader(inputStream))
         ) {
-            HttpRequestParser requestParser = HttpRequestParser.from(reader);
+            Request httpRequest = HttpRequestParser.parse(reader);
+            Response httpResponse = new HttpResponse();
 
-            String response = HttpResponseMaker.makeFrom(requestParser, sessionManager);
+            log.info("Path: {}, Method: {}", httpRequest.getPath(), httpRequest.getHttpMethod());
 
-            outputStream.write(response.getBytes());
+            processService(httpRequest, httpResponse);
+            serviceIfHasStaticResourcePath(httpRequest, httpResponse);
+
+            log.info(httpResponse.getMessage());
+            outputStream.write(httpResponse.getMessage().getBytes());
             outputStream.flush();
-        } catch (IOException | UncheckedServletException | IllegalArgumentException e) {
+        } catch (IOException e) {
             log.error(e.getMessage(), e);
+        }
+    }
+
+    private void processService(Request httpRequest, Response httpResponse) {
+        try {
+            controllerManager.service(httpRequest, httpResponse);
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            httpResponse.addException(e);
+            ExceptionController exceptionController = new ExceptionController();
+            exceptionController.service(httpRequest, httpResponse);
+        }
+    }
+
+    private void serviceIfHasStaticResourcePath(Request httpRequest, Response httpResponse) {
+        if (httpRequest.hasStaticResourcePath() || httpResponse.hasException() || httpResponse.hasStaticResourcePath()) {
+            controllerManager = StaticControllerManager.getInstance();
+            controllerManager.service(httpRequest, httpResponse);
         }
     }
 }
