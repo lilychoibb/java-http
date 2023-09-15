@@ -8,7 +8,7 @@ public class HttpResponse {
     private final Map<String, String> headers = new HashMap<>();
     private final StringBuilder body = new StringBuilder();
 
-    public String createResponse() {
+    public String createResponseString() {
         StringBuilder responseBuilder = new StringBuilder();
         responseBuilder.append("HTTP/1.1 ")
                 .append(status.getCode()).append(" ")
@@ -40,6 +40,18 @@ public class HttpResponse {
 
     public void setRedirectUrl(String value) {
         headers.put("Location", value);
+    }
+
+    public HttpStatus getStatus() {
+        return status;
+    }
+
+    public Map<String, String> getHeaders() {
+        return headers;
+    }
+
+    public StringBuilder getBody() {
+        return body;
     }
 
 }
