@@ -6,24 +6,26 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import nextstep.jwp.exception.UncheckedServletException;
-import nextstep.servlet.DispatcherServlet;
+import nextstep.servlet.Servlet;
 import org.apache.coyote.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Http11Processor implements Runnable, Processor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Http11Processor.class);
+    private static final Logger logger = LoggerFactory.getLogger(Http11Processor.class);
 
     private final Socket connection;
+    private final Servlet servlet;
 
-    public Http11Processor(final Socket connection) {
+    public Http11Processor(final Socket connection, final Servlet servlet) {
         this.connection = connection;
+        this.servlet = servlet;
     }
 
     @Override
     public void run() {
-        LOGGER.info("connect host: {}, port: {}", connection.getInetAddress(), connection.getPort());
+        logger.info("connect host: {}, port: {}", connection.getInetAddress(), connection.getPort());
         process(connection);
     }
 
@@ -37,12 +39,12 @@ public class Http11Processor implements Runnable, Processor {
         ) {
             final HttpRequest httpRequest = HttpRequestFactory.createHttpRequest(bufferedReader);
             final HttpResponse httpResponse = HttpResponse.createBasicResponse();
-            new DispatcherServlet().service(httpRequest, httpResponse);
+            servlet.service(httpRequest, httpResponse);
 
             outputStream.write(httpResponse.getBytes());
             outputStream.flush();
         } catch (IOException | UncheckedServletException e) {
-            LOGGER.error(e.getMessage(), e);
+            logger.error(e.getMessage(), e);
         }
     }
 }

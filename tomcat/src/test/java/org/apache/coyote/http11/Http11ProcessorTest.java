@@ -1,4 +1,4 @@
-package nextstep.org.apache.coyote.http11;
+package org.apache.coyote.http11;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -7,8 +7,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
-import nextstep.org.apache.coyote.http11.support.StubSocket;
-import org.apache.coyote.http11.Http11Processor;
+import nextstep.servlet.DispatcherServletContainer;
+import org.apache.coyote.http11.support.StubSocket;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,8 @@ class Http11ProcessorTest {
                 "");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -56,7 +57,8 @@ class Http11ProcessorTest {
                 "");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -88,7 +90,8 @@ class Http11ProcessorTest {
                 "");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -118,7 +121,8 @@ class Http11ProcessorTest {
                 "account=gugu&password=password");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -147,7 +151,8 @@ class Http11ProcessorTest {
                 "account=gugu&password=pass");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -175,7 +180,8 @@ class Http11ProcessorTest {
                 "account=gu&password=password");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -205,7 +211,8 @@ class Http11ProcessorTest {
                 "");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);
@@ -235,7 +242,8 @@ class Http11ProcessorTest {
                 "account=vero&email=vero%40vero&password=vero");
 
             final var socket = new StubSocket(httpRequest);
-            final Http11Processor processor = new Http11Processor(socket);
+            final Http11Processor processor = new Http11Processor(socket,
+                new DispatcherServletContainer().createServlet());
 
             // when
             processor.process(socket);

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.coyote.util.X_WWW_Form_UrlEncodedDecoder;
 
 public class HttpRequestFactory {
 
@@ -17,7 +18,7 @@ public class HttpRequestFactory {
             final String method = requestLineTokens[0];
             final String uri = requestLineTokens[1];
             final String protocol = requestLineTokens[2];
-            final HttpHeaders headers = HttpHeaders.from(bufferedReader);
+            final HttpHeaders headers = HttpHeaderFactory.createHttpHeaders(bufferedReader);
             final Map<String, String> body = parseBody(headers, bufferedReader);
 
             return new HttpRequest(headers, HttpMethod.of(method), HttpRequestURI.from(uri), protocol, body);

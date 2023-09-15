@@ -2,6 +2,8 @@ package org.apache.coyote.http11;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 public class HttpCookie {
 
@@ -46,8 +48,9 @@ public class HttpCookie {
 
     @Override
     public String toString() {
-        return String.join(COOKIE_DELIMITER, values.entrySet().stream()
+        return values.entrySet().stream()
+            .sorted(Entry.comparingByKey())
             .map(entry -> entry.getKey() + KEY_VALUE_DELIMITER + entry.getValue())
-            .toArray(String[]::new));
+            .collect(Collectors.joining(COOKIE_DELIMITER));
     }
 }
